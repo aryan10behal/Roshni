@@ -1,0 +1,35 @@
+.App {
+  text-align: center;
+  background-color: #282c34;
+  min-height: 100vh;
+  .App-header {
+    background-color: white;
+    height: 10vh;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    font-size: calc(5vmin);
+    color: #282c34;
+    .App-logo {
+      height: 5vh;
+      width: 5vh;
+      margin: 5vh;
+    }
+  }
+  .Map {
+    height: 70vh;
+    width: 80vw;
+    .lamp-marker {
+      height: 30px;
+      width: 30px;
+      img {
+        position: absolute;
+        height: 30px;
+        width: 30px;        
+      }
+    }
+    margin: 10vh 10vw;
+  }
+}
+
+
