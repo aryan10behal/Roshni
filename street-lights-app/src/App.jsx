@@ -21,7 +21,6 @@ function App() {
       axios.get(`http://localhost:8000/streetlights`).then((response) => {
         if(response.status === 200) {
           setLights(response.data)
-          // setLights(response.data.slice(0, 10000))
         }
       })
     }
