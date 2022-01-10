@@ -2,14 +2,23 @@ import React from 'react';
 import {KmeansAlgorithm, MarkerClusterer} from '@googlemaps/markerclusterer'
 
 
-function Map({children, style, className, markerPositions, center, zoom}) {
+
+function Map({children, style, className, markerPositions, center, zoom, srcDest, plot}) {
+
+    const directionsRenderer = new window.google.maps.DirectionsRenderer({routes: []});
+    const directionsService = new window.google.maps.DirectionsService();
 
     const ref = React.useRef(null);
     const [map, setMap] = React.useState();
+    
+    
+    directionsRenderer.setMap(map);
 
     React.useEffect(() => {
         if (ref.current && !map) {
-            setMap(new window.google.maps.Map(ref.current, {mapTypeId: 'roadmap'}));
+            
+            setMap(new window.google.maps.Map(ref.current, {mapTypeId: 'roadmap'}));          
+            
         }
     }, [ref, map]);
 
@@ -30,6 +39,27 @@ function Map({children, style, className, markerPositions, center, zoom}) {
             })
         })
     }, [map, markerPositions])
+
+    React.useEffect(()=>{
+        
+        if(plot){
+            
+
+        directionsService.route({
+            origin:srcDest.srcLat+','+srcDest.srcLong,
+            destination:srcDest.destLat+','+srcDest.destLong,
+            travelMode:'DRIVING'
+        }).then((response)=>{
+            directionsRenderer.setDirections(response)
+        }).catch((e)=> window.alert("Directions request failed due to "+e));
+
+        
+
+        }  
+    
+
+    }, [srcDest])
+  
     return (
         <>
         <div ref={ref} className={className} style={style} />
@@ -38,8 +68,17 @@ function Map({children, style, className, markerPositions, center, zoom}) {
             return React.cloneElement(child, { map });
             }
         })}
+        
+
         </>
+        
+        
     );
 };
 
 export default Map;
+
+//Testing polylines
+// 28.595233929736626 77.08882146289189
+// 28.59586331072582 77.08783862983469
+// 28.59610935666011 77.08881740159825
