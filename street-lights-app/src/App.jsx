@@ -3,6 +3,8 @@ import './App.css';
 import { Wrapper } from "@googlemaps/react-wrapper";
 import env from "react-dotenv";
 import Map from './Components/Map';
+import Input from "./Components/Input"
+
 import React, { useState } from 'react';
 
 
@@ -26,6 +28,8 @@ function App() {
     }
   }, [lights])
 
+  const [srcDest, setSrcDest] = useState({srcLat:0, srcLong:0, destLat:0, destLong:0});
+  const [plot, setPlot] = useState(0);
   return (
     <div className="App">
       <header className="App-header">
@@ -35,14 +39,28 @@ function App() {
         className="Wrapper"
         apiKey={env.GOOGLE_MAPS_API_KEY} render={render}
       >
+
         <Map 
           center={center}
           zoom={zoom}
           className="Map"
           markerPositions={lights}
+          srcDest = {srcDest}
+          plot = {plot}
         >
         </Map>
+
+        <Input 
+          srcDest = {srcDest}
+          setSrcDest = {setSrcDest}
+          plot = {plot}
+          setPlot = {setPlot}
+        />
+          
+    
+       
       </Wrapper>
+      
     </div>
   );
 }
