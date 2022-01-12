@@ -30,6 +30,7 @@ function App() {
 
   const [srcDest, setSrcDest] = useState({srcLat:0, srcLong:0, destLat:0, destLong:0});
   const [plot, setPlot] = useState(0);
+  const [counter, setCounter] = useState(0);
   return (
     <div className="App">
       <header className="App-header">
@@ -47,20 +48,20 @@ function App() {
           markerPositions={lights}
           srcDest = {srcDest}
           plot = {plot}
+          setCounter = {setCounter}
         >
         </Map>
-
         <Input 
           srcDest = {srcDest}
           setSrcDest = {setSrcDest}
           plot = {plot}
           setPlot = {setPlot}
+          counter = {counter}
         />
-          
+          {console.log(counter)}
     
        
       </Wrapper>
-      
     </div>
   );
 }
