@@ -1,6 +1,6 @@
 import React from "react";
 
-function Input({setSrcDest, plot, setPlot}){
+function Input({setSrcDest, plot, setPlot, counter}){
     const sLatRef = React.useRef(null);
     const sLongRef = React.useRef(null);
     const dLatRef = React.useRef(null);
@@ -16,13 +16,14 @@ function Input({setSrcDest, plot, setPlot}){
             <input ref = {dLongRef} type = "text" className = "DestLong" placeholder="Longitude"/>
             <br /> <br />
             <button onClick={()=>{
-      
                 setSrcDest({srcLat:sLatRef.current.value, srcLong:sLongRef.current.value, destLat:dLatRef.current.value, destLong:dLongRef.current.value });
                 setPlot(plot+1);
             }}>Plot</button>
-            
-            
-        </div>
+            <br /> <br />
+            <label>Total Lights: </label>
+            <label>{counter}</label>
+            <br /> <br />
+        </div>  
     );
 
 }
