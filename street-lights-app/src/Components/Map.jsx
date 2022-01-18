@@ -1,8 +1,7 @@
 import React from 'react';
 import {KmeansAlgorithm, MarkerClusterer} from '@googlemaps/markerclusterer'
 
-function distance(lat1,
-    lat2, lon1, lon2)
+function distance(lat1, lat2, lon1, lon2)
 {
 
     // The math module contains a function
@@ -32,7 +31,7 @@ function distance(lat1,
 
   
 
-function Map({children, style, className, markerPositions, center, zoom, srcDest, plot, setCounter}) {
+function Map({children, style, className, markerPositions, center, zoom, src, dest, plot, setCounter, directions}) {
 
     const directionsRenderer = new window.google.maps.DirectionsRenderer({routes: []});
     const directionsService = new window.google.maps.DirectionsService();
@@ -91,50 +90,70 @@ function Map({children, style, className, markerPositions, center, zoom, srcDest
                 numberOfClusters: (count, zoom) => count < 200 ? count : Math.max(1, zoom - 8)
             })
         })
-    }, [map, markerPositions])
+    }, [map, markerPositions, directions])
 
     React.useEffect(()=>{
-        
-        if(plot){
-            
+
+        if(plot && directions){
+
 
         directionsService.route({
-            origin:srcDest.srcLat+','+srcDest.srcLong,
-            destination:srcDest.destLat+','+srcDest.destLong,
+            origin:src,
+            destination:dest,
             travelMode:'DRIVING'
         }).then((response)=>{
-            var result = response.routes[0].overview_path.map(function(e) {
-                return {lng: e.lng(), lat: e.lat()};
-              })
-            setPath(result);
-            
-            const points = new Set();
-
-            for(let i = 0; i<markerPositions.length; i++)
-                {
-                    var x = markerPositions[i].lng;
-                    var y = markerPositions[i].lat;
-                    for(let j = 0; j < result.length; j++)
-                    {
-                        var a = result[j].lng;
-                        var b = result[j].lat;
-                    
-                        // if ditance is less than 25m then its counted
-                        if(distance(y, b, x, a) <= 25)
-                        {
-                            console.log(distance(y, b, x, a));
-                            points.add(y.toString()+","+x.toString());
-                        }
-                    }
-                }
-
-            console.log(points);
+            console.log(directions);
+            console.log(markerPositions);
+            console.log(response);
             directionsRenderer.setDirections(response);
-            setCounter(points.size);
         }).catch((e)=> window.alert("Directions request failed due to "+e));
-
         }  
-    }, [srcDest])
+
+
+    }, [plot, directions])
+
+    // React.useEffect(()=>{
+        
+    //     if(plot){
+            
+
+    //     directionsService.route({
+    //         origin:srcDest.srcLat+','+srcDest.srcLong,
+    //         destination:srcDest.destLat+','+srcDest.destLong,
+    //         travelMode:'DRIVING'
+    //     }).then((response)=>{
+    //         var result = response.routes[0].overview_path.map(function(e) {
+    //             return {lng: e.lng(), lat: e.lat()};
+    //           })
+    //         setPath(result);
+            
+    //         const points = new Set();
+
+    //         for(let i = 0; i<markerPositions.length; i++)
+    //             {
+    //                 var x = markerPositions[i].lng;
+    //                 var y = markerPositions[i].lat;
+    //                 for(let j = 0; j < result.length; j++)
+    //                 {
+    //                     var a = result[j].lng;
+    //                     var b = result[j].lat;
+                    
+    //                     // if ditance is less than 25m then its counted
+    //                     if(distance(y, b, x, a) <= 25)
+    //                     {
+    //                         console.log(distance(y, b, x, a));
+    //                         points.add(y.toString()+","+x.toString());
+    //                     }
+    //                 }
+    //             }
+
+    //         console.log(points);
+    //         directionsRenderer.setDirections(response);
+    //         setCounter(points.size);
+    //     }).catch((e)=> window.alert("Directions request failed due to "+e));
+
+    //     }  
+    // }, [plot])
   
     return (
         <>
