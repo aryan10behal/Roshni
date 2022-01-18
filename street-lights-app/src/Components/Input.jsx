@@ -1,22 +1,19 @@
 import React from "react";
 
-function Input({setSrcDest, plot, setPlot, counter}){
-    const sLatRef = React.useRef(null);
-    const sLongRef = React.useRef(null);
-    const dLatRef = React.useRef(null);
-    const dLongRef = React.useRef(null);
+function Input({setSrc, setDest, plot, setPlot, counter}){
+    const source_ref = React.useRef(null);
+    const destination_ref = React.useRef(null);
 
     return (<div className = "Input">
-            <label>Enter Source</label>
-            <input ref={sLatRef} type = "text" className = "SrcLat" placeholder="Latitude"/>
-            <input ref = {sLongRef} type = "text" className = "SrcLong" placeholder="Longitude"/>
+            <label>Enter Source: </label>
+            <input ref = {source_ref} type = "text" className = "Source_Text" placeholder="Source..."/>
             <br /> <br />
-            <label>Enter Destination</label>
-            <input ref = {dLatRef} type = "text" className = "DestLat" placeholder="Latitude"/>
-            <input ref = {dLongRef} type = "text" className = "DestLong" placeholder="Longitude"/>
+            <label>Enter Destination: </label>
+            <input ref = {destination_ref} type = "text" className = "Destination_Text" placeholder="Destination.."/>
             <br /> <br />
             <button onClick={()=>{
-                setSrcDest({srcLat:sLatRef.current.value, srcLong:sLongRef.current.value, destLat:dLatRef.current.value, destLong:dLongRef.current.value });
+                setSrc(source_ref.current.value);
+                setDest(destination_ref.current.value)
                 setPlot(plot+1);
             }}>Plot</button>
             <br /> <br />
