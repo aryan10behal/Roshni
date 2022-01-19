@@ -14,7 +14,7 @@ function App() {
     return <h1>{status}</h1>;
   };
   const zoom = 18;
-  const center = {lat: 28.595304,lng: 77.088783};
+  const center = {lat: 28.5455,lng: 77.2731};
   const [lights, setLights] = useState([]);
 
 
@@ -29,12 +29,14 @@ function App() {
     }
   }, [lights])
 
-  const [roads, setRoads] = useState([]);
+  const [routeLights, setRouteLights] = useState([]);
+  const [route, setRoute] = useState([]);
   const [src, setSrc] = useState("");
   const [dest, setDest] = useState("");
   const [plot, setPlot] = useState(0);
   const [counter, setCounter] = useState(0);
   const [directions, setDirections] = useState();
+
 
   React.useEffect(() => {
     if(plot)
@@ -47,10 +49,10 @@ function App() {
         },
       }).then((response) => {
           if(response.status === 200) {
-            setRoads(response.data);
-            // setRoads(response.data['final_lights']);
+            setRouteLights(response.data['route_lights']);
             setDirections(1);
-            console.log(roads);
+            setRoute(response.data['route']);
+            console.log(routeLights);
           }
         })
     } 
@@ -67,16 +69,6 @@ function App() {
         className="Wrapper"
         apiKey={env.GOOGLE_MAPS_API_KEY} render={render}
       >
-
-        <Map 
-          center={center}
-          zoom={zoom}
-          className="Map"
-          markerPositions={lights}
-          plot = {plot}
-          setCounter = {setCounter}
-        >
-        </Map>
         <Input 
           src = {src}
           setSrc = {setSrc}
@@ -91,16 +83,26 @@ function App() {
           center={center}
           zoom={zoom}
           className="Map"
-          markerPositions={roads}
+          markerPositions={routeLights}
           src = {src}
           dest = {dest}
+          route = {route}
           plot = {plot}
           setCounter = {setCounter}
           directions = {directions}
+
         >
         </Map>
 
-       
+        <Map 
+          center={center}
+          zoom={zoom}
+          className="Map"
+          markerPositions={lights}
+          plot = {plot}
+          setCounter = {setCounter}
+        >
+        </Map>
       </Wrapper>
     </div>
   );

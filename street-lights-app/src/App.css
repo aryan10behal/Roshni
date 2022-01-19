@@ -29,7 +29,7 @@
 }
 
 .Map {
-  height: 80vh;
+  height: 75vh;
   width: 80vw;
   margin: 5vh 10vw;
 }
@@ -41,4 +41,8 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+input {
+  margin: 10px;
 }
