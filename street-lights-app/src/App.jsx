@@ -52,7 +52,6 @@ function App() {
             setRouteLights(response.data['route_lights']);
             setDirections(1);
             setRoute(response.data['route']);
-            console.log(routeLights);
           }
         })
     } 
@@ -63,7 +62,7 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        Delhi Street Lights Map
+        Roshni: Women's Safety
       </header>
       <Wrapper  
         className="Wrapper"

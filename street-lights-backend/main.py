@@ -110,11 +110,6 @@ def get_route(req: Request):
     print(source)
     print(destination)
     data = requests.get(DIRECTIONS_API + '?&origin=' + source + '&destination=' + destination + '&key=' + GOOGLE_MAPS_API_KEY).json()
-    data['request'] = {
-        'origin': source,
-        'destination': destination,
-        'travelMode': 'DRIVING'
-    }
     route = [point['start_location'] for point in data['routes'][0]['legs'][0]['steps']]
 
     # concatenating lat and long with %2C
@@ -153,7 +148,7 @@ def get_route(req: Request):
         end = time()
         # print(end - start)
     close_lights = [{'lat': x[0], 'lng': x[1]} for x in close_lights]
-    output = {'route': data, 'route_lights': close_lights}
+    output = {'route': roads, 'route_lights': close_lights}
     return output
 
 
