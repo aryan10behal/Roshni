@@ -2,14 +2,12 @@ import React from 'react';
 import {KmeansAlgorithm, MarkerClusterer} from '@googlemaps/markerclusterer'
   
 
-function Map({children, style, className, markerPositions, center, zoom, route}) {
-
+function Map({children, style, className, markerPositions, center, zoom, route, bounds}) {
 
     const ref = React.useRef(null);
     const [map, setMap] = React.useState();
     const clusterer = React.useRef();
     const routePlot = React.useRef();
-
 
     React.useEffect(() => {
         if (ref.current && !map) {
@@ -37,32 +35,35 @@ function Map({children, style, className, markerPositions, center, zoom, route})
     }, [map, markerPositions])
 
     React.useEffect(() => {
-        if(!route) return;
+        if(!route || !route.length || !bounds) return;
         if(routePlot.current) {
             routePlot.current.polyline.setMap(null);
             routePlot.current.A.setMap(null);
             routePlot.current.B.setMap(null);
         }
+
         routePlot.current = {
             polyline: new window.google.maps.Polyline({map, path: route, strokeColor: 'DodgerBlue'}),
             A: new window.google.maps.Marker({map, position: route[0], label: 'A'}),
-            B: new window.google.maps.Marker({map, position: route[route.length - 1], label: 'B'})
+            B: new window.google.maps.Marker({map, position: route[route.length - 1], label: 'B'}),
         };
-    }, [map, route])
+        map.fitBounds(
+            new window.google.maps.LatLngBounds(
+                bounds.southwest, 
+                bounds.northeast
+            )
+        );
+    }, [map, route, bounds])
 
     return (
         <>
         <div ref={ref} className={className} style={style} />
-        {React.Children.map(children, (child) => {
-            if (React.isValidElement(child)) {
-            return React.cloneElement(child, { map });
-            }
-        })}
-        
-
+            {React.Children.map(children, (child) => {
+                if (React.isValidElement(child)) {
+                return React.cloneElement(child, { map });
+                }
+            })}
         </>
-        
-        
     );
 };
 

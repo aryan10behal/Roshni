@@ -31,11 +31,11 @@ function App() {
 
   const [routeLights, setRouteLights] = useState([]);
   const [route, setRoute] = useState([]);
+  const [bounds, setBounds] = useState({});
   const [src, setSrc] = useState("");
   const [dest, setDest] = useState("");
   const [plot, setPlot] = useState(0);
   const [counter, setCounter] = useState(0);
-  const [directions, setDirections] = useState();
 
 
   React.useEffect(() => {
@@ -50,7 +50,7 @@ function App() {
       }).then((response) => {
           if(response.status === 200) {
             setRouteLights(response.data['route_lights']);
-            setDirections(1);
+            setBounds(response.data['bounds']);
             setRoute(response.data['route']);
           }
         })
@@ -88,8 +88,7 @@ function App() {
           route = {route}
           plot = {plot}
           setCounter = {setCounter}
-          directions = {directions}
-
+          bounds = {bounds}
         >
         </Map>
 
