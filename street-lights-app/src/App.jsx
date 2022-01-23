@@ -7,23 +7,20 @@ import Input from "./Components/Input"
 
 import React, { useState } from 'react';
 
-
-
 function App() {
   const render = (status) => {
     return <h1>{status}</h1>;
   };
-  const zoom = 18;
-  const center = {lat: 28.5455,lng: 77.2731};
+  const zoom = 11;
+  const center = {lat: 28.6,lng: 77.15};
   const [lights, setLights] = useState([]);
-
 
   React.useEffect(() => {
     if(lights.length === 0) {
       const axios = require('axios');
       axios.get(`http://localhost:8000/streetlights`).then((response) => {
         if(response.status === 200) {
-          setLights(response.data)
+          setLights(response.data.map(position => new window.google.maps.LatLng(position)))
         }
       })
     }
@@ -35,7 +32,6 @@ function App() {
   const [src, setSrc] = useState("");
   const [dest, setDest] = useState("");
   const [plot, setPlot] = useState(0);
-  const [counter, setCounter] = useState(0);
 
 
   React.useEffect(() => {
@@ -49,9 +45,9 @@ function App() {
         },
       }).then((response) => {
           if(response.status === 200) {
-            setRouteLights(response.data['route_lights']);
+            setRouteLights(response.data['route_lights'].map(position => new window.google.maps.LatLng(position)));
             setBounds(response.data['bounds']);
-            setRoute(response.data['route']);
+            setRoute(response.data['route'].map(position => new window.google.maps.LatLng(position)));
           }
         })
     } 
@@ -67,6 +63,7 @@ function App() {
       <Wrapper  
         className="Wrapper"
         apiKey={env.GOOGLE_MAPS_API_KEY} render={render}
+        libraries={['visualization']}
       >
         <Input 
           src = {src}
@@ -75,7 +72,6 @@ function App() {
           setDest = {setDest}
           plot = {plot}
           setPlot = {setPlot}
-          counter = {counter}
         />
 
           <Map 
@@ -83,11 +79,7 @@ function App() {
           zoom={zoom}
           className="Map"
           markerPositions={routeLights}
-          src = {src}
-          dest = {dest}
           route = {route}
-          plot = {plot}
-          setCounter = {setCounter}
           bounds = {bounds}
         >
         </Map>
@@ -97,8 +89,7 @@ function App() {
           zoom={zoom}
           className="Map"
           markerPositions={lights}
-          plot = {plot}
-          setCounter = {setCounter}
+          heatmapData={lights}
         >
         </Map>
       </Wrapper>

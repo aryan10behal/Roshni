@@ -1,2 +1,4 @@
 street-lights-backend/__pycache__
 .env
+street-lights-app/node-modules
+street-lights-app/public/env.js

@@ -2,11 +2,12 @@ import React from 'react';
 import {KmeansAlgorithm, MarkerClusterer} from '@googlemaps/markerclusterer'
   
 
-function Map({children, style, className, markerPositions, center, zoom, route, bounds}) {
+function Map({children, style, className, center, zoom, markerPositions, route, heatmapData, bounds}) {
 
     const ref = React.useRef(null);
     const [map, setMap] = React.useState();
     const clusterer = React.useRef();
+    const heatmap = React.useRef();
     const routePlot = React.useRef();
 
     React.useEffect(() => {
@@ -33,6 +34,12 @@ function Map({children, style, className, markerPositions, center, zoom, route, 
             })
         });
     }, [map, markerPositions])
+
+    React.useEffect(() => {
+        if(!heatmapData) return;
+        if(heatmap.current) heatmap.current.setMap(null);
+        heatmap.current = new window.google.maps.visualization.HeatmapLayer({map, data: heatmapData});
+    }, [map, heatmapData])
 
     React.useEffect(() => {
         if(!route || !route.length || !bounds) return;
