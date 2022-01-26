@@ -21,17 +21,23 @@ function App() {
       axios.get(`http://localhost:8000/streetlights`).then((response) => {
         if(response.status === 200) {
           setLights(response.data.map(position => new window.google.maps.LatLng(position)))
+          console.log(response.data.length);
         }
+        
       })
     }
   }, [lights])
 
   const [routeLights, setRouteLights] = useState([]);
+  const [perpendiculars, setPerpendiculars] = useState([]);
   const [route, setRoute] = useState([]);
   const [bounds, setBounds] = useState({});
+  const [darkroutes, setDarkroutes] = useState([]);
+  const [darkbounds, setDarkbounds] = useState({});
   const [src, setSrc] = useState("");
   const [dest, setDest] = useState("");
   const [plot, setPlot] = useState(0);
+  const [darkDistances, setDarkDistances] = useState([]);
 
 
   React.useEffect(() => {
@@ -48,6 +54,12 @@ function App() {
             setRouteLights(response.data['route_lights'].map(position => new window.google.maps.LatLng(position)));
             setBounds(response.data['bounds']);
             setRoute(response.data['route'].map(position => new window.google.maps.LatLng(position)));
+            // setDarkroutes(response.data['dark_routes'].map(position => new window.google.maps.LatLng(position)))
+             setDarkroutes(response.data['dark_routes']);
+             setPerpendiculars(response.data['perpendiculars'].map(position => new window.google.maps.LatLng(position)));
+             setDarkDistances(response.data['dark_spot_distances']);
+            setDarkbounds(response.data['dark_route_bounds'])
+            
           }
         })
     } 
@@ -90,6 +102,17 @@ function App() {
           className="Map"
           markerPositions={lights}
           heatmapData={lights}
+        >
+        </Map>
+
+        <Map 
+          center={center}
+          zoom={zoom}
+          className="Map"
+          markerPositions={perpendiculars}
+          darkroutes = {darkroutes}
+          darkbounds = {darkbounds}
+          darkDistances = {darkDistances}
         >
         </Map>
       </Wrapper>
