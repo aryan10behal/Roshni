@@ -15,8 +15,7 @@ function Input({setSrc, setDest, plot, setPlot, counter}){
                 setPlot(plot+1);
             }}>Plot</button>
             <br />
-            <label>Total Lights: </label>
-            <label>{counter}</label>
+           
         </div>  
     );
 
