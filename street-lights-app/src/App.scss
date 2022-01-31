@@ -1,0 +1,43 @@
+.App {
+  height: calc(100vh - 128px);
+  margin: 64px 0 0 0;
+  padding: 32px 32px;
+  .App-body {
+    height: calc(100vh - 128px);
+    display: flex;
+    flex-direction: row;
+    .Input {
+      width: 300px;
+      .Layers {
+        display: flex;
+        flex-direction: column;
+        width: calc(100% - 16px);
+        .Input-Field {
+          margin: 16px 0px 0px 0px;
+        }
+      }
+      .Loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: calc(100% - 16px);
+        padding: 32px 0px;
+      }
+    }
+    .Map {
+      width: calc(100vw - 64px - 300px);
+    }
+  }
+
+  
+}
+
+
+
+input {
+  margin: 10px;
+}
+button {
+    border: none;
+    padding: 5px 20px;
+}

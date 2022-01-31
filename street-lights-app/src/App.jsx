@@ -1,11 +1,13 @@
 import logo from './logo.svg';
-import './App.css';
+import './App.scss';
 import { Wrapper } from "@googlemaps/react-wrapper";
 import env from "react-dotenv";
 import Map from './Components/Map';
 import Input from "./Components/Input"
 
 import React, { useState } from 'react';
+import { AppBar, IconButton, Toolbar, Typography } from '@mui/material';
+import MenuIcon from '@mui/icons-material/Menu';
 
 function App() {
   const render = (status) => {
@@ -14,108 +16,97 @@ function App() {
   const zoom = 11;
   const center = {lat: 28.6,lng: 77.15};
   const [lights, setLights] = useState([]);
+  const [routeData, setRouteData] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  const [perpendiculars, setPerpendiculars] = useState([]);
+  const [darkroutes, setDarkroutes] = useState([]);
+  const [darkbounds, setDarkbounds] = useState({});
+  const [showAllStreetLights, setShowAllStreetLights] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showRoute, setShowRoute] = useState(false);
+  const [src, setSrc] = useState("");
+  const [dest, setDest] = useState("");
+  const [darkDistances, setDarkDistances] = useState([]);
 
   React.useEffect(() => {
     if(lights.length === 0) {
       const axios = require('axios');
+      setLoading(true);
       axios.get(`http://localhost:8000/streetlights`).then((response) => {
+        setLoading(false);
         if(response.status === 200) {
           setLights(response.data.map(position => new window.google.maps.LatLng(position)))
           console.log(response.data.length);
         }
-        
       })
     }
   }, [lights])
 
-  const [routeLights, setRouteLights] = useState([]);
-  const [perpendiculars, setPerpendiculars] = useState([]);
-  const [route, setRoute] = useState([]);
-  const [bounds, setBounds] = useState({});
-  const [darkroutes, setDarkroutes] = useState([]);
-  const [darkbounds, setDarkbounds] = useState({});
-  const [src, setSrc] = useState("");
-  const [dest, setDest] = useState("");
-  const [plot, setPlot] = useState(0);
-  const [darkDistances, setDarkDistances] = useState([]);
 
-
-  React.useEffect(() => {
-    if(plot)
-    {
-        const axios = require('axios');
-        axios.get(`http://localhost:8000/route`, {
-          params: {
-          source: src,
-          destination: dest,
-        },
-      }).then((response) => {
-          if(response.status === 200) {
-            setRouteLights(response.data['route_lights'].map(position => new window.google.maps.LatLng(position)));
-            setBounds(response.data['bounds']);
-            setRoute(response.data['route'].map(position => new window.google.maps.LatLng(position)));
-            // setDarkroutes(response.data['dark_routes'].map(position => new window.google.maps.LatLng(position)))
-             setDarkroutes(response.data['dark_routes']);
-             setPerpendiculars(response.data['perpendiculars'].map(position => new window.google.maps.LatLng(position)));
-             setDarkDistances(response.data['dark_spot_distances']);
-            setDarkbounds(response.data['dark_route_bounds'])
-            
-          }
+  function fetchRouteData() {
+    if(!src || !dest) return;
+    const axios = require('axios');
+    setLoading(true);
+    axios.get(`http://localhost:8000/route`, {
+      params: {
+        source: src,
+        destination: dest,
+      },
+    }).then((response) => {
+      setLoading(false);
+      if(response.status === 200) {
+        // setDarkroutes(response.data['dark_routes'].map(position => new window.google.maps.LatLng(position)))
+          setDarkroutes(response.data['dark_routes']);
+          setPerpendiculars(response.data['perpendiculars'].map(position => new window.google.maps.LatLng(position)));
+          setDarkDistances(response.data['dark_spot_distances']);
+        setDarkbounds(response.data['dark_route_bounds'])
+        setRouteData({
+          routeLights: response.data['route_lights'].map(position => new window.google.maps.LatLng(position)),
+          bounds: response.data['bounds'],
+          route: response.data['route'].map(position => new window.google.maps.LatLng(position))
         })
-    } 
-  }, [plot])
-
-
+        
+      }
+    })
+  }
 
   return (
     <div className="App">
-      <header className="App-header">
-        Roshni: Women's Safety
-      </header>
-      <Wrapper  
-        className="Wrapper"
-        apiKey={env.GOOGLE_MAPS_API_KEY} render={render}
-        libraries={['visualization']}
-      >
+      <AppBar>
+        <Toolbar>
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+            Roshni: Women's Safety
+          </Typography>
+        </Toolbar>
+      </AppBar>
+      <div className='App-body'>
         <Input 
-          src = {src}
+          setShowAllStreetlights={setShowAllStreetLights}
+          setShowHeatmap={setShowHeatmap}
+          setShowRoute={setShowRoute}
+          showRoute={showRoute}
           setSrc = {setSrc}
-          dest = {dest}
           setDest = {setDest}
-          plot = {plot}
-          setPlot = {setPlot}
+          fetchRouteData={fetchRouteData}
+          loading={loading}
         />
-
+        <Wrapper  
+          className="Wrapper"
+          apiKey={env.GOOGLE_MAPS_API_KEY} render={render}
+          libraries={['visualization']}
+        >
           <Map 
-          center={center}
-          zoom={zoom}
-          className="Map"
-          markerPositions={routeLights}
-          route = {route}
-          bounds = {bounds}
-        >
-        </Map>
+            center={center}
+            zoom={zoom}
+            className="Map"
+            heatmapData={showHeatmap ? lights : null}
+            clustererData={showAllStreetLights ? lights : []}
+            routeData={showRoute? routeData: null}
+          />
+        </Wrapper>
 
-        <Map 
-          center={center}
-          zoom={zoom}
-          className="Map"
-          markerPositions={lights}
-          heatmapData={lights}
-        >
-        </Map>
-
-        <Map 
-          center={center}
-          zoom={zoom}
-          className="Map"
-          markerPositions={perpendiculars}
-          darkroutes = {darkroutes}
-          darkbounds = {darkbounds}
-          darkDistances = {darkDistances}
-        >
-        </Map>
-      </Wrapper>
+      </div>
     </div>
   );
 }

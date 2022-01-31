@@ -173,7 +173,8 @@ def get_route(req: Request):
 
     route = []
     path = dict()
-    
+    if len(directions_api_response) == 0:
+        return {'error': 'request failed'}
     for direction in directions_api_response[0]['legs'][0]['steps']:
         polyline = googlemaps.convert.decode_polyline(direction['polyline']['points'])
         route += polyline
