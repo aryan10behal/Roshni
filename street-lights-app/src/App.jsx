@@ -1,3 +1,5 @@
+// sudo mongod --config /usr/local/etc/mongod.conf --fork
+
 import logo from './logo.svg';
 import './App.scss';
 import { Wrapper } from "@googlemaps/react-wrapper";
@@ -22,18 +24,32 @@ function App() {
   const [perpendiculars, setPerpendiculars] = useState([]);
   const [darkroutes, setDarkroutes] = useState([]);
   const [darkbounds, setDarkbounds] = useState({});
+
   const [showAllStreetLights, setShowAllStreetLights] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showRoute, setShowRoute] = useState(false);
+  const [showDarkRoute, setDarkRoute] = useState(false);
+
   const [src, setSrc] = useState("");
   const [dest, setDest] = useState("");
+  const [srcDark, setSrcDark] = useState("");
+  const [destDark, setDestDark] = useState("");
   const [darkDistances, setDarkDistances] = useState([]);
+
+  const MIN_THRESH_DARK = 10;
+  const MAX_THRESH_DARK = 1000;
+  const [darkStretchThreshold, setDarkStretchThreshold] = React.useState(MIN_THRESH_DARK)
+
+  const MIN_THRESH_ROUTE =2;
+  const MAX_THRESH_ROUTE = 500;
+  const [distanceFromStreet, setDistanceFromStreet] = React.useState(MIN_THRESH_ROUTE)
+
 
   React.useEffect(() => {
     if(lights.length === 0) {
       const axios = require('axios');
       setLoading(true);
-      axios.get(`http://localhost:8000/streetlights`).then((response) => {
+      axios.get(env.BACKEND + `/streetlights`).then((response) => {
         setLoading(false);
         if(response.status === 200) {
           setLights(response.data.map(position => new window.google.maps.LatLng(position)))
@@ -48,27 +64,58 @@ function App() {
     if(!src || !dest) return;
     const axios = require('axios');
     setLoading(true);
-    axios.get(`http://localhost:8000/route`, {
+    axios.get(env.BACKEND + `/route`, {
       params: {
         source: src,
         destination: dest,
+        darkRouteThreshold: 100,
+        distanceFromPath: distanceFromStreet
       },
     }).then((response) => {
       setLoading(false);
       if(response.status === 200) {
-        // setDarkroutes(response.data['dark_routes'].map(position => new window.google.maps.LatLng(position)))
-          setDarkroutes(response.data['dark_routes']);
-          setPerpendiculars(response.data['perpendiculars'].map(position => new window.google.maps.LatLng(position)));
-          setDarkDistances(response.data['dark_spot_distances']);
-        setDarkbounds(response.data['dark_route_bounds'])
-        setRouteData({
-          routeLights: response.data['route_lights'].map(position => new window.google.maps.LatLng(position)),
-          bounds: response.data['bounds'],
-          route: response.data['route'].map(position => new window.google.maps.LatLng(position))
-        })
+     
+          
+
+          
+          setRouteData({
+            routeLights: response.data['route_lights'].map(position => new window.google.maps.LatLng(position)),
+            bounds: response.data['bounds'],
+            route: response.data['route'].map(position => new window.google.maps.LatLng(position))
+          })
+          
+          
         
       }
     })
+  }
+
+  function fetchDarkRouteData(){
+    if(!srcDark || !destDark) return;
+    const axios = require('axios');
+    setLoading(true);
+    axios.get(env.BACKEND + `/route`, {
+      params: {
+        source: srcDark,
+        destination: destDark,
+        darkRouteThreshold: darkStretchThreshold,
+        distanceFromPath: distanceFromStreet
+      },
+    }).then((response) => {
+      setLoading(false);
+      if(response.status === 200) {
+     
+          
+
+          setPerpendiculars(response.data['perpendiculars'].map(position => new window.google.maps.LatLng(position)));
+          setDarkDistances(response.data['dark_spot_distances']);
+          setDarkbounds(response.data['dark_route_bounds'])
+          setDarkroutes(response.data['dark_routes']);
+          
+        
+      }
+    })
+
   }
 
   return (
@@ -88,8 +135,21 @@ function App() {
           showRoute={showRoute}
           setSrc = {setSrc}
           setDest = {setDest}
+          setSrcDark = {setSrcDark}
+          setDestDark = {setDestDark}
           fetchRouteData={fetchRouteData}
+          fetchDarkRouteData={fetchDarkRouteData}
           loading={loading}
+          setDarkRoute={setDarkRoute}
+          showDarkRoute={showDarkRoute}
+          distanceFromStreet={distanceFromStreet}
+          darkStretchThreshold={darkStretchThreshold}
+          setDistanceFromStreet={setDistanceFromStreet}
+          setDarkStretchThreshold={setDarkStretchThreshold}
+          MIN_THRESH_DARK={MIN_THRESH_DARK}
+          MAX_THRESH_DARK={MAX_THRESH_DARK}
+          MIN_THRESH_ROUTE={MIN_THRESH_ROUTE}
+          MAX_THRESH_ROUTE={MAX_THRESH_ROUTE}
         />
         <Wrapper  
           className="Wrapper"
@@ -103,6 +163,11 @@ function App() {
             heatmapData={showHeatmap ? lights : null}
             clustererData={showAllStreetLights ? lights : []}
             routeData={showRoute? routeData: null}
+            darkroutes={showDarkRoute?darkroutes:[]}
+            darkDistances = {showDarkRoute?darkDistances:[]}
+            
+
+
           />
         </Wrapper>
 
