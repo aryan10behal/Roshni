@@ -40,7 +40,7 @@ function App() {
   const MAX_THRESH_DARK = 1000;
   const [darkStretchThreshold, setDarkStretchThreshold] = React.useState(MIN_THRESH_DARK)
 
-  const MIN_THRESH_ROUTE =10;
+  const MIN_THRESH_ROUTE = 10;
   const MAX_THRESH_ROUTE = 500;
   const [distanceFromStreet, setDistanceFromStreet] = React.useState(MIN_THRESH_ROUTE)
 

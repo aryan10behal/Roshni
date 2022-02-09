@@ -1,7 +1,7 @@
 
 import React from 'react';
 import {KmeansAlgorithm, MarkerClusterer} from '@googlemaps/markerclusterer'
-  
+import env from "react-dotenv";
 
 function Map({children, className, center, zoom, clustererData, routeData, route, heatmapData, bounds, darkroutes, darkbounds, darkDistances, plot}) {
 
