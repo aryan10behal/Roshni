@@ -15,7 +15,7 @@ python3 load.py
 Start the backend by running 
 ```
 cd street-lights-backend
-uvicorn main:app --reload
+uvicorn main:app --reload --host 0.0.0.0
 ```
 
 ## Frontend

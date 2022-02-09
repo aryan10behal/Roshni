@@ -3,15 +3,17 @@ import React from 'react';
 import {KmeansAlgorithm, MarkerClusterer} from '@googlemaps/markerclusterer'
   
 
-function Map({children, className, center, zoom, clustererData, routeData, route, heatmapData, bounds, darkroutes, darkbounds, darkDistances}) {
+function Map({children, className, center, zoom, clustererData, routeData, route, heatmapData, bounds, darkroutes, darkbounds, darkDistances, plot}) {
 
     const ref = React.useRef(null);
     const [map, setMap] = React.useState();
     const clusterer = React.useRef();
     const heatmap = React.useRef();
     const routePlot = React.useRef();
+    const darkRef = React.useRef();
+    const darkPlot = React.useRef();
     
-    // const darkRoutePlot = React.useRef([]);
+
 
     React.useEffect(() => {
         if (ref.current && !map) {
@@ -36,7 +38,7 @@ function Map({children, className, center, zoom, clustererData, routeData, route
     React.useEffect(() => {
         if(clusterer.current) clusterer.current.setMap(null);
         if(!clustererData) return;
-            var markers = clustererData.map(position => new window.google.maps.Marker({position, icon: "http://localhost:8000/icon"}));
+            var markers = clustererData.map(position => new window.google.maps.Marker({position, icon: env.BACKEND+"/icon"}));
             clusterer.current = new MarkerClusterer({
                 map, 
                 markers, 
@@ -47,7 +49,7 @@ function Map({children, className, center, zoom, clustererData, routeData, route
             });
     }, [map, clustererData])
     
-    // plot route, neighbourin streetlights and dark regions if routeData supplied
+    //plot route, neighbourin streetlights and dark regions if routeData supplied
     React.useEffect(() => {
         if(routePlot.current) {
             routePlot.current.polyline.setMap(null);
@@ -62,7 +64,7 @@ function Map({children, className, center, zoom, clustererData, routeData, route
             polyline: new window.google.maps.Polyline({map, path: routeData.route, strokeColor: 'DodgerBlue'}),
             A: new window.google.maps.Marker({map, position: routeData.route[0], label: 'A'}),
             B: new window.google.maps.Marker({map, position: routeData.route[routeData.route.length - 1], label: 'B'}),
-            routeLights: routeData.routeLights.map(position => new window.google.maps.Marker({map, position, icon: "http://localhost:8000/icon"}))        
+            routeLights: routeData.routeLights.map(position => new window.google.maps.Marker({map, position, icon: env.BACKEND+"/icon"}))        
         };
         map.fitBounds(
             new window.google.maps.LatLngBounds(
@@ -70,67 +72,92 @@ function Map({children, className, center, zoom, clustererData, routeData, route
                 routeData.bounds.northeast
             )
         );
-
-        // var darkRoutesFinal = []
-        // for(let i=0;i<darkroutes.length;i++){
-        //     var darkRoutesTemp = []
-        //     for(let j=0; j<darkroutes[i].length; j++){
-        //         darkRoutesTemp[j] = new window.google.maps.LatLng(darkroutes[i][j])
-        //     }
-        //     darkRoutesFinal[i]=darkRoutesTemp;
-        // }
         
-        // for(let i = 0; i<darkRoutesFinal.length;i++){
-
-           
-        //     var darkPath = new window.google.maps.Polyline({
-        //         path: darkRoutesFinal[i],
-        //         geodesic: true,
-        //         strokeColor: "#FF0000",
-        //         strokeOpacity: 1.0,
-        //         strokeWeight: 4,
-        //         });
         
-        //         darkPath.setMap(map);
-
-        // }
-       
-        // for(let i=0; i<darkroutes.length; i++){
-        //     const marker1 = new window.google.maps.Marker({
-        //         position: darkroutes[i][0],
-        //         icon: "http://localhost:8000/icon",
-        //         map
-        //       });
-        //       const marker2 = new window.google.maps.Marker({
-        //         position: darkroutes[i][darkroutes[i].length-1],
-        //         icon: "http://localhost:8000/icon",
-        //         map
-        //       });
-
-             
-        //         const contentString = `<div id="content"><p>Distance to the next pole <br><h1>${darkDistances[i]} </h1></div>`;;
-        //         const infowindow = new window.google.maps.InfoWindow({
-        //             content: contentString
-    
-        //           });
-                  
-        //           new window.google.maps.event.addListener(marker1, 'click', function () {
-        //             infowindow.open(map, marker1);
-        //         });
-
-              
-            
-
-        // }
-
   
     }, [map, routeData])
 
 
     React.useEffect(() => {
-        if(!route || !route.length || !bounds) return;
+        if(darkPlot.current){
+            darkPlot.current.paths.forEach(path=> {
+                path.setMap(null);
+            });
+            darkPlot.current.darkSpots.forEach(darkSpot => {
+                darkSpot.setMap(null);
+            });
+        }
+        if(!darkroutes){
+            
+            return;
+        } 
+        var darkRoutesFinal = []
+        for(let i=0;i<darkroutes.length;i++){
+            var darkRoutesTemp = []
+            for(let j=0; j<darkroutes[i].length; j++){
+                darkRoutesTemp[j] = new window.google.maps.LatLng(darkroutes[i][j])
+            }
+            darkRoutesFinal[i]=darkRoutesTemp;
+        }
 
-    }, [map, route, bounds])
+        darkPlot.current = {
+            paths :[],
+            darkSpots: []
+        }
+        
+        for(let i = 0; i<darkRoutesFinal.length;i++){
+
+           
+            var darkPath = new window.google.maps.Polyline({
+                path: darkRoutesFinal[i],
+                geodesic: true,
+                strokeColor: "#FF0000",
+                strokeOpacity: 1.0,
+                strokeWeight: 4,
+                });
+        
+                darkPath.setMap(map);
+            darkPlot.current.paths.push(darkPath);
+
+        }
+       
+        for(let i=0; i<darkroutes.length; i++){
+            const marker1 = new window.google.maps.Marker({
+                position: darkroutes[i][0],
+                icon: env.BACKEND+"/icon2",
+                map
+              });
+              const marker2 = new window.google.maps.Marker({
+                position: darkroutes[i][darkroutes[i].length-1],
+                icon: env.BACKEND+"/icon2",
+                map
+              });
+
+             
+            const contentString = `<div id="content"><p>Distance to the next pole <br><h1>${darkDistances[i].toFixed(2)}m </h1></div>`;;
+            const infowindow = new window.google.maps.InfoWindow({
+                content: contentString
+
+                });
+                
+                new window.google.maps.event.addListener(marker1, 'click', function () {
+                infowindow.open(map, marker1);
+
+            });
+            infowindow.addListener('closeclick', ()=>{
+                // Handle focus manually.
+              });
+
+            darkPlot.current.darkSpots.push(marker1);
+            darkPlot.current.darkSpots.push(marker2);
+          
+    
+            
+
+        }
+
+
+    }, [map, darkroutes])
 
     return (
         <>
