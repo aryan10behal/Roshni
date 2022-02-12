@@ -2,6 +2,7 @@ from audioop import mul
 from cgi import print_environ
 from fileinput import close
 from turtle import distance
+from warnings import filters
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import pymongo
@@ -48,14 +49,15 @@ def pointToLineDistance(p1, p2, p3, distance_from_path):
         A = 1
         B = 0
         C = p1[0]
-        lights = p3[np.where(
+        dist = np.where(
             (p3[:, 1] - p1[1] >= 0) ^ (p3[:, 1] - p2[1] >= 0), 
             np.abs(p3[:, 0] - p1[0]), 
             np.where(distance_from_p1 < distance_from_p2, distance_from_p1, distance_from_p2)
-        ) < distance_from_path]
+        ) < distance_from_path
 
-        distance_from_p1 = np.sqrt((lights[:, 0] - p1[0]) ** 2 + (lights[:, 1] - p1[1]) ** 2)
-        distance_from_p2 = np.sqrt((lights[:, 0] - p2[0]) ** 2 + (lights[:, 1] - p2[1]) ** 2)
+        lights = p3[dist]
+        distance_from_p1 = distance_from_p1[dist]
+        distance_from_p2 = distance_from_p2[dist]
         distance = np.where(
             (lights[:, 1] - p1[1] >= 0) ^ (lights[:, 1] - p2[1] >= 0), 
             np.abs(lights[:, 0] - p1[0]), 
@@ -67,26 +69,30 @@ def pointToLineDistance(p1, p2, p3, distance_from_path):
         C = - (A * p1[0] + B * p1[1])
         C1 = - (A * p1[0] - B * p1[1])
         C2 = - (A * p2[0] - B * p2[1])
-        lights = p3[np.where(
+        dist = np.where(
             (A * p3[:, 0] - B * p3[:, 1] + C1 >= 0) ^ (A * p3[:, 0] - B * p3[:, 1] + C2 >= 0), 
             np.abs(A * p3[:, 0] + B * p3[:, 1] + C)/(A**2 + B**2)**0.5,
             np.where(distance_from_p1 < distance_from_p2, distance_from_p1, distance_from_p2)
-        ) < distance_from_path]
+        ) < distance_from_path
 
-        distance_from_p1 = np.sqrt((lights[:, 0] - p1[0]) ** 2 + (lights[:, 1] - p1[1]) ** 2)
-        distance_from_p2 = np.sqrt((lights[:, 0] - p2[0]) ** 2 + (lights[:, 1] - p2[1]) ** 2)
+        lights = p3[dist]
+        distance_from_p1 = distance_from_p1[dist]
+        distance_from_p2 = distance_from_p2[dist]
         distance = np.where(
             (A * lights[:, 0] - B * lights[:, 1] + C1 >= 0) ^ (A * lights[:, 0] - B * lights[:, 1] + C2 >= 0), 
             np.abs(A * lights[:, 0] + B * lights[:, 1] + C)/(A**2 + B**2)**0.5,
             np.where(distance_from_p1 < distance_from_p2, distance_from_p1, distance_from_p2)
         )
-
-    return lights, distance
+    fine_lights = perpendicular_checker(p1, p2, lights)
+    return fine_lights, distance
 
 def perpendicular_checker(p1,p2,p3):
+    PR = np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
     if p2[0] == p1[0]:
-            x = p1[0]
-            y = p3[1]
+        x = p1[0]
+        y = p3[:, 1]
+        PQ = np.sqrt((x - p1[0]) ** 2 + (y[:] - p1[1]) ** 2)
+        QR = np.sqrt((x - p2[0]) ** 2 + (y[:] - p2[1]) ** 2)
     else:
         A1 = (p2[1] - p1[1])/(p2[0] - p1[0])
         B1 = -1
@@ -94,23 +100,23 @@ def perpendicular_checker(p1,p2,p3):
         if A1 == 0:
             A2 = -1
             B2 = 0
-            C2 = p3[0]
+            C2 = p3[:, 0]
         else:
             A2 = -1/A1
             B2 = -1
-            C2 = p3[1] - A2*p3[0]
+            C2 = p3[:,1] - A2*p3[:,0]
 
-        x = (B1*C2 - B2*C1)/ (A1*B2 - A2*B1)
-        y = (A2*C1 - A1*C2) / (A1*B2 - A2*B1)
+        x = ((B1*C2[:] - B2*C1)/ (A1*B2 - A2*B1))
+        y = (A2*C1 - A1*C2[:]) / (A1*B2 - A2*B1)
+        PQ = np.sqrt((x[:] - p1[0]) ** 2 + (y[:] - p1[1]) ** 2)
+        QR = np.sqrt((x[:] - p2[0]) ** 2 + (y[:] - p2[1]) ** 2)
 
-    PR = haversine(p2[0], p2[1], p1[0], p1[1])
-    PQ = haversine(p1[0], p1[1], x, y)
-    QR = haversine(p2[0], p2[1], x, y)
-
-    if PR > PQ + QR + 2 or PR < PQ + QR - 2:
-        return False
-
-    return True
+    # return list()
+    # PR = np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+    # PQ = np.sqrt((x[:] - p1[0]) ** 2 + (y[:] - p1[1]) ** 2)
+    # QR = np.sqrt((x[:] - p2[0]) ** 2 + (y[:] - p2[1]) ** 2)
+    fine_lights = p3[np.logical_and((PQ[:] + QR[:] - 2 <= PR),(PR <= PQ[:] + QR[:] + 2))]
+    return fine_lights
 
 
 def find_perpendiculars(lights_considered, path):
@@ -159,17 +165,12 @@ def find_dark_spots(perpendiculars, path, dark_route_threshold):
     dark_routes = []
     dark_spot_distance = []
     dark_bounds = []
-    dark_lights = []
 
     for i in range(1, len(perpendiculars)):
         distance = perpendiculars[i]['dist'] - perpendiculars[i-1]['dist']
         if distance > dark_route_threshold:
             point1 = {'lat': perpendiculars[i-1]['lat'], 'lng': perpendiculars[i-1]['lng']}
             point2 = {'lat': perpendiculars[i]['lat'], 'lng': perpendiculars[i]['lng']}
-            if point1 not in dark_lights:
-                dark_lights.append(point1)
-            if point2 not in dark_lights:
-                dark_lights.append(point2)
             dark_spot_distance.append(distance)
             dark_route = []
             while j < path_size and path[j][1] < perpendiculars[i-1]['dist']:
@@ -184,7 +185,7 @@ def find_dark_spots(perpendiculars, path, dark_route_threshold):
             j-=1
             dark_routes.append(dark_route)
 
-    return  dark_routes, dark_bounds, dark_lights, dark_spot_distance
+    return  dark_routes, dark_bounds, dark_spot_distance
 
 
 
@@ -276,39 +277,36 @@ def get_route(req: Request):
         lights, distances = pointToLineDistance(p1, p2, light_coordinates, distance_from_path)
         for j in range(len(lights)):
             current_light = (lights[j][0], lights[j][1]) 
-            if perpendicular_checker(p1, p2, current_light):
-                if current_light in close_lights.keys():
-                    if close_lights[current_light][2] > distances[j]:
-                        close_lights[current_light] = (p1, p2, distances[j])   
-                else:
-                    close_lights[current_light] = (p1, p2, distances[j])
+            if current_light in close_lights.keys():
+                if close_lights[current_light][2] > distances[j]:
+                    close_lights[current_light] = (p1, p2, distances[j])   
+            else:
+                close_lights[current_light] = (p1, p2, distances[j])
     
+    end = timer()
+    print(end - start) 
+    start = timer()
 
-    for x in close_lights:
-        light_between_points = [x[0], x[1], close_lights[x][0], close_lights[x][1]]
-        lights_considered.append(light_between_points)
-     
+    lights_considered = [[x[0], x[1], close_lights[x][0], close_lights[x][1]] for x in close_lights]
     perpendiculars, perpendiculars_list, gath = find_perpendiculars(lights_considered, path)
 
     path = sorted(path.items(), key=lambda kv: kv[1])
     
-    dark_routes, dark_route_bounds, dark_lights, dark_spot_distances = find_dark_spots(perpendiculars_list, path, dark_route_threshold)
+    dark_routes, dark_route_bounds, dark_spot_distances = find_dark_spots(perpendiculars_list, path, dark_route_threshold)
 
-    gath = [{'lat': x[0], 'lng': x[1]} for x in gath]
+    # gath = [{'lat': x[0], 'lng': x[1]} for x in gath]
     close_lights = [{'lat': x[0], 'lng': x[1]} for x in close_lights]
     # close_lights = [{'lat': x[0], 'lng': x[1]} for x in lights_considered]
     # close_lights = [{'lat': x[0][0], 'lng': x[0][1]} for x in path]
     # close_lights = [{'lat': x['lat'], 'lng': x['lng']} for x in route]
     
     dark_route_bounds = []
-    for i in range(len(dark_routes)):
-        dark_route_bounds.append(directions_api_response[0]['bounds'])
+    # for i in range(len(dark_routes)):
+    #     dark_route_bounds.append(directions_api_response[0]['bounds'])
  
     output = {'route': route, 'route_lights': close_lights, 'bounds': directions_api_response[0]['bounds'], 'dark_routes': dark_routes, 'dark_route_bounds': dark_route_bounds, 'perpendiculars': perpendiculars, 'dark_spot_distances':  dark_spot_distances, 'indicator': perpendiculars}
-
     end = timer()
     print(end - start) 
-
     return output
 
 
