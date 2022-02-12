@@ -12,6 +12,9 @@ from fastapi.responses import FileResponse
 import numpy as np
 import googlemaps
 from math import radians, cos, sin, asin, sqrt, acos, atan2, pow, degrees, dist, pi
+from timeit import default_timer as timer
+
+
 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -29,7 +32,7 @@ def haversine(lat1, lon1, lat2, lon2):
 
     return c*R*1000
 
-def pointToLineDistance(p1, p2, p3):
+def pointToLineDistance(p1, p2, p3, distance_from_path):
     '''
     Ax + By + C = 0
     x3, y3
@@ -45,9 +48,17 @@ def pointToLineDistance(p1, p2, p3):
         A = 1
         B = 0
         C = p1[0]
-        distance = np.where(
+        lights = p3[np.where(
             (p3[:, 1] - p1[1] >= 0) ^ (p3[:, 1] - p2[1] >= 0), 
             np.abs(p3[:, 0] - p1[0]), 
+            np.where(distance_from_p1 < distance_from_p2, distance_from_p1, distance_from_p2)
+        ) < distance_from_path]
+
+        distance_from_p1 = np.sqrt((lights[:, 0] - p1[0]) ** 2 + (lights[:, 1] - p1[1]) ** 2)
+        distance_from_p2 = np.sqrt((lights[:, 0] - p2[0]) ** 2 + (lights[:, 1] - p2[1]) ** 2)
+        distance = np.where(
+            (lights[:, 1] - p1[1] >= 0) ^ (lights[:, 1] - p2[1] >= 0), 
+            np.abs(lights[:, 0] - p1[0]), 
             np.where(distance_from_p1 < distance_from_p2, distance_from_p1, distance_from_p2)
         )
     else:
@@ -56,12 +67,21 @@ def pointToLineDistance(p1, p2, p3):
         C = - (A * p1[0] + B * p1[1])
         C1 = - (A * p1[0] - B * p1[1])
         C2 = - (A * p2[0] - B * p2[1])
-        distance = np.where(
+        lights = p3[np.where(
             (A * p3[:, 0] - B * p3[:, 1] + C1 >= 0) ^ (A * p3[:, 0] - B * p3[:, 1] + C2 >= 0), 
             np.abs(A * p3[:, 0] + B * p3[:, 1] + C)/(A**2 + B**2)**0.5,
             np.where(distance_from_p1 < distance_from_p2, distance_from_p1, distance_from_p2)
+        ) < distance_from_path]
+
+        distance_from_p1 = np.sqrt((lights[:, 0] - p1[0]) ** 2 + (lights[:, 1] - p1[1]) ** 2)
+        distance_from_p2 = np.sqrt((lights[:, 0] - p2[0]) ** 2 + (lights[:, 1] - p2[1]) ** 2)
+        distance = np.where(
+            (A * lights[:, 0] - B * lights[:, 1] + C1 >= 0) ^ (A * lights[:, 0] - B * lights[:, 1] + C2 >= 0), 
+            np.abs(A * lights[:, 0] + B * lights[:, 1] + C)/(A**2 + B**2)**0.5,
+            np.where(distance_from_p1 < distance_from_p2, distance_from_p1, distance_from_p2)
         )
-    return distance
+
+    return lights, distance
 
 def perpendicular_checker(p1,p2,p3):
     if p2[0] == p1[0]:
@@ -140,6 +160,7 @@ def find_dark_spots(perpendiculars, path, dark_route_threshold):
     dark_spot_distance = []
     dark_bounds = []
     dark_lights = []
+
     for i in range(1, len(perpendiculars)):
         distance = perpendiculars[i]['dist'] - perpendiculars[i-1]['dist']
         if distance > dark_route_threshold:
@@ -162,6 +183,7 @@ def find_dark_spots(perpendiculars, path, dark_route_threshold):
             dark_route.append(point2)
             j-=1
             dark_routes.append(dark_route)
+
     return  dark_routes, dark_bounds, dark_lights, dark_spot_distance
 
 
@@ -246,25 +268,26 @@ def get_route(req: Request):
             
     close_lights = dict()
 
+    start = timer()
+    print("hello")
     for i in range(1, len(route)):
         p1 = (route[i-1]['lat'], route[i-1]['lng'])
         p2 = (route[i]['lat'], route[i]['lng'])
-        distances = pointToLineDistance(p1, p2, light_coordinates)
-        for j in range(len(all_lights)):
-            current_light = (all_lights[j]['lat'], all_lights[j]['lng']) 
-            if distances[j] < distance_from_path:
-                if perpendicular_checker(p1, p2, current_light):
-                    if current_light in close_lights.keys():
-                        if close_lights[current_light][2] > distances[j]:
-                            close_lights[current_light] = (p1, p2, distances[j])   
-                    else:
-                        close_lights[current_light] = (p1, p2, distances[j])
+        lights, distances = pointToLineDistance(p1, p2, light_coordinates, distance_from_path)
+        for j in range(len(lights)):
+            current_light = (lights[j][0], lights[j][1]) 
+            if perpendicular_checker(p1, p2, current_light):
+                if current_light in close_lights.keys():
+                    if close_lights[current_light][2] > distances[j]:
+                        close_lights[current_light] = (p1, p2, distances[j])   
+                else:
+                    close_lights[current_light] = (p1, p2, distances[j])
+    
 
     for x in close_lights:
         light_between_points = [x[0], x[1], close_lights[x][0], close_lights[x][1]]
         lights_considered.append(light_between_points)
-
-            
+     
     perpendiculars, perpendiculars_list, gath = find_perpendiculars(lights_considered, path)
 
     path = sorted(path.items(), key=lambda kv: kv[1])
@@ -282,6 +305,9 @@ def get_route(req: Request):
         dark_route_bounds.append(directions_api_response[0]['bounds'])
  
     output = {'route': route, 'route_lights': close_lights, 'bounds': directions_api_response[0]['bounds'], 'dark_routes': dark_routes, 'dark_route_bounds': dark_route_bounds, 'perpendiculars': perpendiculars, 'dark_spot_distances':  dark_spot_distances, 'indicator': perpendiculars}
+
+    end = timer()
+    print(end - start) 
 
     return output
 
