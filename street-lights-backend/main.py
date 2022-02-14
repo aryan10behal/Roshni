@@ -3,7 +3,7 @@ from cgi import print_environ
 from fileinput import close
 from turtle import distance
 from warnings import filters
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import pymongo
 import requests
@@ -14,8 +14,8 @@ import numpy as np
 import googlemaps
 from math import radians, cos, sin, asin, sqrt, acos, atan2, pow, degrees, dist, pi
 from timeit import default_timer as timer
-
-
+from csv import writer
+import pandas as pd
 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -220,6 +220,7 @@ all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat']} for streetl
 light_coordinates = np.array([[streetlight['lat'], streetlight['lng']] for streetlight in all_lights])
 
 
+
 @app.get("/streetlights")
 def read_item():
     print(len(all_lights))
@@ -269,8 +270,7 @@ def get_route(req: Request):
             
     close_lights = dict()
 
-
-
+    start = timer()
     for i in range(1, len(route)):
         p1 = (route[i-1]['lat'], route[i-1]['lng'])
         p2 = (route[i]['lat'], route[i]['lng'])
@@ -283,7 +283,9 @@ def get_route(req: Request):
             else:
                 close_lights[current_light] = (p1, p2, distances[j])
     
-
+    end = timer()
+    print(end - start) 
+    start = timer()
 
     lights_considered = [[x[0], x[1], close_lights[x][0], close_lights[x][1]] for x in close_lights]
     perpendiculars, perpendiculars_list, gath = find_perpendiculars(lights_considered, path)
@@ -303,8 +305,9 @@ def get_route(req: Request):
     #     dark_route_bounds.append(directions_api_response[0]['bounds'])
  
     output = {'route': route, 'route_lights': close_lights, 'bounds': directions_api_response[0]['bounds'], 'dark_routes': dark_routes, 'dark_route_bounds': dark_route_bounds, 'perpendiculars': perpendiculars, 'dark_spot_distances':  dark_spot_distances, 'indicator': perpendiculars}
+    end = timer()
+    print(end - start) 
     return output
-
 
 @app.get("/report")
 def get_route(req: Request):
@@ -314,6 +317,113 @@ def get_route(req: Request):
     print('report', lat, lng)
     db['reports'].insert({'lat': lat, 'lng': lng})
 
+
+@app.get("/addLight")
+def addLight(req: Request):
+    request_args = dict(req.query_params)
+    latitude = float(request_args['latitude'])
+    longitude = float(request_args['longitude'])
+    if({'lng': longitude, 'lat':latitude} in all_lights):
+        return
+    all_lights.append({'lng': longitude, 'lat':latitude})
+    db['streetlights'].insert_one({'lng': longitude, 'lat':latitude})
+
+    with open("../street-lights-db/data/Added Lights.csv") as f_object:
+        text = f_object.read()
+        f_object.close()
+    with open("../street-lights-db/data/Added Lights.csv", "a") as f_object:
+        if not text.endswith('\n'):
+            f_object.write('\n')
+        writer1=writer(f_object)
+        writer1.writerow([latitude, longitude])
+        f_object.close()
+    return
+
+@app.get("/deleteLight")
+def deleteLight(req: Request):
+    request_args = dict(req.query_params)
+    latitude = float(request_args['latitude'])
+    longitude = float(request_args['longitude'])
+    if({'lng': longitude, 'lat':latitude} not in all_lights):
+        return
+    all_lights.remove({'lng': longitude, 'lat':latitude})
+    db['streetlights'].delete_one({'lng': longitude, 'lat':latitude})
+    with open("../street-lights-db/data/Deleted Lights.csv") as f_object:
+        text = f_object.read()
+        f_object.close()
+    with open("../street-lights-db/data/Deleted Lights.csv", "a") as f_object:
+        if not text.endswith('\n'):
+            f_object.write('\n')
+        writer1=writer(f_object)
+        writer1.writerow([latitude, longitude])
+        f_object.close()
+    return
+
+
+
+@app.post("/addLightsFile")
+def addLightsFile(file: UploadFile = File(...)):
+    df = pd.read_csv(file.file)
+    lampposts = []
+    df_final_latlng = df[['Longitude', 'Latitude']]
+    df_final_latlng = df_final_latlng.drop_duplicates(keep= 'last')
+    df_final_latlng = df_final_latlng.dropna()
+    temp = df_final_latlng.values.tolist()
+    temp = map(lambda x : {'lng': x[0], 'lat': x[1]}, temp)
+    lampposts += temp
+    db_list = []
+    for pole in lampposts:
+        if pole not in all_lights:
+
+            all_lights.append({'lng':pole['lng'], 'lat':pole['lat']})
+            db_list.append(pole)
+    if(len(db_list)!=0):
+        db['streetlights'].insert_many(db_list)
+    with open("../street-lights-db/data/Added Lights.csv") as f_object:
+        text = f_object.read()
+        f_object.close()
+    with open("../street-lights-db/data/Added Lights.csv", "a") as f_object:
+        if not text.endswith('\n'):
+            f_object.write('\n')
+        writer1=writer(f_object)
+        for light in db_list:
+            writer1.writerow([light['lat'], light['lng']])
+        f_object.close()
+    return
+ 
+
+@app.post("/deleteLightsFile")
+def addLightsFile(file: UploadFile = File(...)):
+    df = pd.read_csv(file.file)
+    lampposts = []
+    df_final_latlng = df[['Longitude', 'Latitude']]
+    df_final_latlng = df_final_latlng.drop_duplicates(keep= 'last')
+    df_final_latlng = df_final_latlng.dropna()
+    temp = df_final_latlng.values.tolist()
+    temp = map(lambda x : {'lng': x[0], 'lat': x[1]}, temp)
+    lampposts += temp
+    db_list = []
+    for pole in lampposts:
+        if pole in all_lights:
+
+            all_lights.remove({'lng':pole['lng'], 'lat':pole['lat']})
+            db_list.append(pole)
+    if(len(db_list)!=0):
+        for pole in db_list:
+            db['streetlights'].delete_one(pole)
+    with open("../street-lights-db/data/Deleted Lights.csv") as f_object:
+        text = f_object.read()
+        f_object.close()
+    with open("../street-lights-db/data/Deleted Lights.csv", "a") as f_object:
+        if not text.endswith('\n'):
+            f_object.write('\n')
+        writer1=writer(f_object)
+        for light in db_list:
+            writer1.writerow([light['lat'], light['lng']])
+        f_object.close()
+    return
+
+
 @app.get("/icon")
 def get_icon():
     return FileResponse("lamp-glow.png")
@@ -321,3 +431,4 @@ def get_icon():
 @app.get("/icon2")
 def get_icon2():
     return FileResponse("light.png")
+

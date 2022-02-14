@@ -3,6 +3,7 @@ import { AppBar, Button, CircularProgress, Toolbar, Typography } from '@mui/mate
 import Home from './Components/Home';
 import './App.scss'
 import Report from './Components/Report';
+import Admin from './Components/Admin';
 import env from "react-dotenv";
 
 function App() {
@@ -10,12 +11,13 @@ function App() {
     const [loading, setLoading] = useState(false);
   
 
-    const pages = ['Home', 'Report', 'About']
+    const pages = ['Home', 'Report', 'About', 'Admin']
     const [currPage, setCurrPage] = useState(pages[0]);
     const page_component = {
         'Home': <Home lights={lights} />,
         'Report': <Report lights={lights} />,
-        'About': <div></div>
+        'About': <div></div>,
+        'Admin': <Admin setLights = {setLights} />
     }
 
     function openPage(page) {
