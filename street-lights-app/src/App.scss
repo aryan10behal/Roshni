@@ -11,9 +11,30 @@
       .Layers {
         display: flex;
         flex-direction: column;
-        width: calc(100% - 16px);
+        padding: 0 32px 0 0;
         .Input-Field {
-          margin: 16px 0px 0px 0px;
+          margin: 16px 0;
+          display: flex;
+          align-items:flex-end;
+          .Input {
+            flex: 1;
+          }
+          .Button {
+            width: max-content;
+            height: max-content;
+          }
+        }
+        .Selected-Light {
+          margin: 16px 0;
+          padding: 16px;
+          border: solid grey 1px;
+          border-radius: 8px;
+          .Report-Button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 16px 0 0 0;
+          }
         }
       }
       .Loading {
@@ -28,10 +49,7 @@
       width: calc(100vw - 64px - 300px);
     }
   }
-
-  
 }
-
 
 
 input {

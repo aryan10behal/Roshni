@@ -12,10 +12,14 @@ python3 load.py
 ```
 
 ## Backend
-Start the backend by running 
+Start the backend in development mode by running 
 ```
 cd street-lights-backend
 uvicorn main:app --reload --host 0.0.0.0
+```
+Start the backend in production mode using
+```
+gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind=0.0.0.0
 ```
 
 ## Frontend
@@ -23,4 +27,9 @@ To run the frontend in development mode use
 ```
 cd street-lights-app
 npm start
+```
+To run the frontend in production mode, use
+```
+npm run build
+serve -s build -p 8080
 ```
