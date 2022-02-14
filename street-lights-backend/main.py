@@ -1,6 +1,7 @@
 from audioop import mul
 from cgi import print_environ
 from fileinput import close
+from datetime import datetime
 from turtle import distance
 from warnings import filters
 from fastapi import FastAPI, Request, File, UploadFile
@@ -310,12 +311,17 @@ def get_route(req: Request):
     return output
 
 @app.get("/report")
-def get_route(req: Request):
+def report(req: Request):
     request_args = dict(req.query_params)
     lat = request_args['lat']
     lng = request_args['lng']
-    print('report', lat, lng)
-    db['reports'].insert({'lat': lat, 'lng': lng})
+    print('report', {'lat': lat, 'lng': lng, 'timestamp': str(datetime.now())})
+    db['reports'].insert_one({'lat': lat, 'lng': lng, 'timestamp': str(datetime.now())})
+    return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp']}, db['reports'].find()))
+
+@app.get("/reports")
+def get_reports():
+    return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp']}, db['reports'].find()))
 
 
 @app.get("/addLight")

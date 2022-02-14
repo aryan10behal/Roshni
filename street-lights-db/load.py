@@ -5,7 +5,9 @@ myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 
 db = myclient["street-lights-db"]
 streetlights = db["streetlights"]
+reports = db["reports"]
 streetlights.drop()
+reports.drop()
 
 for x in streetlights.find()[:10]:
     print(x)

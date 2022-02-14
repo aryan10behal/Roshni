@@ -1,5 +1,5 @@
 import { Alert, Button, IconButton, TextField } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Search from "@mui/icons-material/Search";
 import Map from "./Map";
 import { Wrapper } from "@googlemaps/react-wrapper";
@@ -12,9 +12,15 @@ function Report({lights}) {
     const [zoom, setZoom] = useState(11);
     const [center, setCenter] = useState({lat: 28.6,lng: 77.15});
     const [selectedLight, setSelectedLight] = useState(null);
-    var reports = []
+    const [reports, setReports] = useState(null)
 
-    fetch(`${env.BACKEND}/reports`)
+    useEffect(() => {
+        if(reports == null) {
+            fetch(`${env.BACKEND}/reports`)
+            .then((response) => response.json())
+            .then((data) => setReports(data)) 
+        }
+    }, [reports])
 
     function zoomToLocality() {
         fetch(`${env.BACKEND}/place?query=${locality}`)
@@ -60,7 +66,8 @@ function Report({lights}) {
                         <Search />
                     </IconButton>
                 </div>
-                <SelectedLight light={selectedLight} />
+                <SelectedLight light={selectedLight} reports={reports} setReports={setReports} />
+                <ReportList reports={reports} />
             </div>
         </div>
         <Wrapper  
@@ -81,12 +88,12 @@ function Report({lights}) {
 }
 
 
-function SelectedLight({light}) {
+function SelectedLight({light, reports, setReports}) {
     const [status, setStatus] = useState(false);
     if(light == null) {
         return "";
     }
-    const REPORT = 0, REPORTING = 1, REPORTED = 2;
+    const REPORT = 0, REPORTING = 1;
     let Button_ = ""
     let ReportButton = (<Button onClick={reportLight}>Report as not working</Button>)
     let ReportingButton = (<Button onClick={reportLight} disabled={true}>Report as not working</Button>)
@@ -100,26 +107,27 @@ function SelectedLight({light}) {
         setStatus(REPORTING)
         fetch(`${env.BACKEND}/report?lat=${light.lat}&lng=${light.lng}`)
         .then((response) => {
+            setStatus(REPORT);
             if(response.status == 200) {
-                setStatus(REPORTED);
                 Toast = SuccessToast;
+                response.json().then((data) => {
+                    setReports(data);
+                })
             } else {
-                setStatus(REPORT);
                 Toast = FailToast;
             }
-            response.status == 200 ? setStatus(REPORTED) : setStatus(REPORT)
         }).catch(() => {
             setStatus(REPORT);
             Toast = FailToast;
         })
     }
 
-    if(status == REPORT) {
-        Button_ = ReportButton
+    if(reports.find((report) => report.lng == light.lng && report.lat == light.lat)) {
+        Button_ = ReportedButton
     } else if(status == REPORTING) {
         Button_ = ReportingButton
-    } else if(status == REPORTED) {
-        Button_ = ReportedButton
+    } else {
+        Button_ = ReportButton
     }
 
     return (<div className="Selected-Light">
@@ -133,6 +141,12 @@ function SelectedLight({light}) {
     </div>)
 }
 
+
+function ReportList({reports}) {
+    return <div>
+        {reports?.map((report) => <div>{report.lat} {report.lng} {Date(report.datetime)}</div>)}
+    </div>
+}
 
 
 export default Report;
