@@ -234,7 +234,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat']} for streetlight in db["streetlights"].find() if streetlight['lng'] and streetlight['lat']]
+all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS NO':streetlight['CCMS NO'], 'Zone':streetlight['Zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] ,'Connected Load':streetlight['Connected Load']} for streetlight in db["streetlights"].find() if streetlight['lng'] and streetlight['lat']]
+
 
 light_coordinates = np.array([[streetlight['lat'], streetlight['lng']] for streetlight in all_lights])
 
@@ -342,6 +343,8 @@ def get_route(req: Request):
     light_distance_from_path = float(request_args['distanceFromPath'])
     dark_route_threshold = float(request_args['darkRouteThreshold'])
 
+
+
     # light_distance_from_path = 10
     # dark_route_threshold = 100
     # conversion to perpendicular to line distance..
@@ -422,6 +425,7 @@ def get_route(req: Request):
 
 @app.get("/addLight")
 def addLight(req: Request):
+    global light_coordinates
     request_args = dict(req.query_params)
     latitude = float(request_args['latitude'])
     longitude = float(request_args['longitude'])
@@ -445,6 +449,7 @@ def addLight(req: Request):
 
 @app.get("/deleteLight")
 def deleteLight(req: Request):
+    global light_coordinates
     request_args = dict(req.query_params)
     latitude = float(request_args['latitude'])
     longitude = float(request_args['longitude'])
@@ -482,6 +487,7 @@ def get_reports():
 
 @app.post("/addLightsFile")
 def addLightsFile(file: UploadFile = File(...)):
+    global light_coordinates
     df = pd.read_csv(file.file)
     lampposts = []
     df_final_latlng = df[['Longitude', 'Latitude']]
@@ -513,6 +519,7 @@ def addLightsFile(file: UploadFile = File(...)):
 
 @app.post("/deleteLightsFile")
 def deleteLightsFile(file: UploadFile = File(...)):
+    global light_coordinates
     df = pd.read_csv(file.file)
     lampposts = []
     df_final_latlng = df[['Longitude', 'Latitude']]
