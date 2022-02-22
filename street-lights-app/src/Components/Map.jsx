@@ -3,7 +3,7 @@ import React from 'react';
 import {KmeansAlgorithm, MarkerClusterer} from '@googlemaps/markerclusterer'
 import env from "react-dotenv";
 
-function Map({children, className, center, zoom, clustererData, routeData, route, heatmapData, bounds, darkroutes, darkbounds, darkDistances, plot, onMarkerClick}) {
+function Map({children, className, center, zoom, clustererData, routeData, route, heatmapData, bounds, darkroutes, darkbounds, darkDistances, plot, onMarkerClick, allLightsData}) {
 
     const ref = React.useRef(null);
     const [map, setMap] = React.useState();
@@ -39,8 +39,8 @@ function Map({children, className, center, zoom, clustererData, routeData, route
         if(clusterer.current) clusterer.current.setMap(null);
         if(!clustererData) return;
             var markers = clustererData.map(position => {
-                var marker = new window.google.maps.Marker({position, icon: env.BACKEND+"/icon"});
-                marker.addListener("click", () => onMarkerClick(marker, map));
+                var marker = new window.google.maps.Marker({position:position['LatLng'], icon: env.BACKEND+"/icon"});
+                marker.addListener("click", () => onMarkerClick(marker, position, map));
                 return marker;
             });
             clusterer.current = new MarkerClusterer({
