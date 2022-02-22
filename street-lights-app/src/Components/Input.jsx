@@ -5,8 +5,10 @@ import { Checkbox, CircularProgress, FormControlLabel, Slider, TextField, Typogr
 function Input({setShowAllStreetlights, setShowHeatmap, showRoute, setShowRoute, setSrc, setDest, setSrcDark, setDestDark, fetchRouteData, fetchDarkRouteData, loading, showDarkRoute, setDarkRoute,
     distanceFromStreet,
     darkStretchThreshold,
+    distanceFromStreetDark,
     setDistanceFromStreet,
     setDarkStretchThreshold,
+    setDistanceFromStreetDark,
     MIN_THRESH_DARK,
     MAX_THRESH_DARK,
     MIN_THRESH_ROUTE,
@@ -44,6 +46,10 @@ function Input({setShowAllStreetlights, setShowHeatmap, showRoute, setShowRoute,
                         Dark Stretch Threshold: {darkStretchThreshold}m
                     </Typography>
                     <Slider valueLabelDisplay="auto" min={MIN_THRESH_DARK} max={MAX_THRESH_DARK} onChange={(event) => setDarkStretchThreshold(event.target.value)}/>
+                    <Typography className="Input-Field" component="div">
+                        Distance from the street: {distanceFromStreetDark}m
+                    </Typography>
+                    <Slider valueLabelDisplay="auto" min={MIN_THRESH_ROUTE} max={MAX_THRESH_ROUTE} onChange={(event) => setDistanceFromStreetDark(event.target.value)}/>
                     <Button className="Input-Field" onClick={()=>{
                         fetchDarkRouteData()
                     }}>Load</Button>
