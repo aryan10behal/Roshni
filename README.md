@@ -12,6 +12,12 @@ python3 load.py
 ```
 
 ## Backend
+To create database for Users (authentication), Run the following in python console
+```
+import services
+services.create_database()
+```
+
 Start the backend in development mode by running 
 ```
 cd street-lights-backend
