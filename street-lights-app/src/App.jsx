@@ -11,7 +11,6 @@ import { UserContext } from "./context/UserContext";
 
 function App() {
     const [lights, setLights] = useState([]);
-    const [allLightsData, setAllLightsData] = useState([]);
     const [loading, setLoading] = useState(false);
   
     const [message, setMessage] = useState("");
@@ -21,7 +20,7 @@ function App() {
     const pages = ['Home', 'Report', 'About', 'Admin','Login','Register']
     const [currPage, setCurrPage] = useState(pages[0]);
     const page_component = {
-        'Home': <Home lights={lights} allLightsData={allLightsData} />,
+        'Home': <Home lights={lights} />,
         'Report': <Report lights={lights} />,
         'About': <div></div>,
         'Admin': token?<Admin setLights = {setLights} />:<Login />,
@@ -48,7 +47,6 @@ function App() {
         .then((data) => {
 
             let temp = data.map(position => positionData(position));
-            setAllLightsData(data)
             setLights(temp)
             callback(temp);
             setLoading(false);
