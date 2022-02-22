@@ -6,6 +6,7 @@ pymongo
 numpy
 pandas
 python-multipart
-passlib[bcrypt]
+passlib
+bcrypt
 SQLAlchemy
 pyjwt
