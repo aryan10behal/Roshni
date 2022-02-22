@@ -11,37 +11,17 @@ import { UserContext } from "./context/UserContext";
 
 function App() {
     const [lights, setLights] = useState([]);
+    const [allLightsData, setAllLightsData] = useState([]);
     const [loading, setLoading] = useState(false);
   
     const [message, setMessage] = useState("");
     const [token] = useContext(UserContext);
 
-    const getWelcomeMessage = async () => {
-        const requestOptions = {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        };
-        const response = await fetch(env.BACKEND +"/api", requestOptions);
-        const data = await response.json();
-    
-        if (!response.ok) {
-          console.log("something messed up");
-        } else {
-            console.log(data);
-          setMessage(data.message);
-        }
-      };
-
-    useEffect(() => {
-        getWelcomeMessage();
-      }, []);
 
     const pages = ['Home', 'Report', 'About', 'Admin','Login','Register']
     const [currPage, setCurrPage] = useState(pages[0]);
     const page_component = {
-        'Home': <Home lights={lights} />,
+        'Home': <Home lights={lights} allLightsData={allLightsData} />,
         'Report': <Report lights={lights} />,
         'About': <div></div>,
         'Admin': token?<Admin setLights = {setLights} />:<Login />,
@@ -54,12 +34,21 @@ function App() {
     }
 
     function fetchLights(callback, err) {
+
+        function positionData(position){
+
+            var latLng = new window.google.maps.LatLng({'lng':position['lng'], 'lat':position['lat']});
+            var positionData = {'LatLng': latLng, 'CCMS NO':position['CCMS NO'], 'Zone':position['Zone'], 'Type of Light':position['Type of Light'], 'No. Of Lights':position['No. Of Lights'], 'Ward No.':position['Ward No.'] ,'Connected Load':position['Connected Load']};
+            return positionData;
+        }
         if(lights.length > 0) return callback(lights);
         setLoading(true);
         fetch(env.BACKEND + `/streetlights`)
         .then(response => response.json())
         .then((data) => {
-            let temp = data.map(position => new window.google.maps.LatLng(position));
+
+            let temp = data.map(position => positionData(position));
+            setAllLightsData(data)
             setLights(temp)
             callback(temp);
             setLoading(false);
