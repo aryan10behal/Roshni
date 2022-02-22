@@ -5,7 +5,7 @@ import Input from "./Input"
 
 import React, { useState } from 'react';
 
-function Home({lights, allLightsData}) {
+function Home({lights}) {
   const render = (status) => {
     return <h1>{status}</h1>;
   };
@@ -165,7 +165,6 @@ function Home({lights, allLightsData}) {
           routeData={showRoute? routeData: null}
           darkroutes={showDarkRoute?darkroutes:[]}
           darkDistances = {showDarkRoute?darkDistances:[]}
-          allLightsData = {showAllStreetLights ? allLightsData : []}
           onMarkerClick={onMarkerClick}
         />
       </Wrapper>
