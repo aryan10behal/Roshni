@@ -1,23 +1,52 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState,useContext  } from 'react';
 import { AppBar, Button, CircularProgress, Toolbar, Typography } from '@mui/material';
 import Home from './Components/Home';
 import './App.scss'
 import Report from './Components/Report';
 import Admin from './Components/Admin';
+import Login from "./Components/Login";
+import Register from './Components/Register';
 import env from "react-dotenv";
+import { UserContext } from "./context/UserContext";
 
 function App() {
     const [lights, setLights] = useState([]);
     const [loading, setLoading] = useState(false);
   
+    const [message, setMessage] = useState("");
+    const [token] = useContext(UserContext);
 
-    const pages = ['Home', 'Report', 'About', 'Admin']
+    const getWelcomeMessage = async () => {
+        const requestOptions = {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        };
+        const response = await fetch(env.BACKEND +"/api", requestOptions);
+        const data = await response.json();
+    
+        if (!response.ok) {
+          console.log("something messed up");
+        } else {
+            console.log(data);
+          setMessage(data.message);
+        }
+      };
+
+    useEffect(() => {
+        getWelcomeMessage();
+      }, []);
+
+    const pages = ['Home', 'Report', 'About', 'Admin','Login','Register']
     const [currPage, setCurrPage] = useState(pages[0]);
     const page_component = {
         'Home': <Home lights={lights} />,
         'Report': <Report lights={lights} />,
         'About': <div></div>,
-        'Admin': <Admin setLights = {setLights} />
+        'Admin': token?<Admin setLights = {setLights} />:<Login />,
+        'Login': <Login />,
+        'Register': <Register/>
     }
 
     function openPage(page) {
