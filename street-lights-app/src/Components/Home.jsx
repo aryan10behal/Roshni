@@ -5,7 +5,7 @@ import Input from "./Input"
 
 import React, { useState } from 'react';
 
-function Home({lights}) {
+function Home({lights, allLightsData}) {
   const render = (status) => {
     return <h1>{status}</h1>;
   };
@@ -33,12 +33,22 @@ function Home({lights}) {
   const MIN_THRESH_DARK = 10;
   const MAX_THRESH_DARK = 1000;
   const [darkStretchThreshold, setDarkStretchThreshold] = React.useState(MIN_THRESH_DARK)
+  
 
   const MIN_THRESH_ROUTE = 10;
   const MAX_THRESH_ROUTE = 500;
   const [distanceFromStreet, setDistanceFromStreet] = React.useState(MIN_THRESH_ROUTE)
+  const [distanceFromStreetDark, setDistanceFromStreetDark] = React.useState(MIN_THRESH_ROUTE)
 
   function fetchRouteData() {
+
+  //   function positionData(position){
+
+  //     var latLng = new window.google.maps.LatLng({'lng':position['lng'], 'lat':position['lat']});
+  //     var positionData = {'LatLng': latLng, 'CCMS NO':position['CCMS NO'], 'Zone':position['Zone'], 'Type of Light':position['Type of Light'], 'No. Of Lights':position['No. Of Lights'], 'Ward No.':position['Ward No.'] ,'Connected Load':position['Connected Load']};
+  //     return positionData;
+  // }
+
     if(!src || !dest) return;
     const axios = require('axios');
     setLoading(true);
@@ -61,6 +71,8 @@ function Home({lights}) {
   }
 
   function fetchDarkRouteData(){
+
+
     if(!srcDark || !destDark) return;
     const axios = require('axios');
     setLoading(true);
@@ -69,7 +81,8 @@ function Home({lights}) {
         source: srcDark,
         destination: destDark,
         darkRouteThreshold: darkStretchThreshold,
-        distanceFromPath: distanceFromStreet?distanceFromStreet:20
+        distanceFromPath: distanceFromStreetDark,
+       
       },
     }).then((response) => {
       setLoading(false);
@@ -86,6 +99,29 @@ function Home({lights}) {
       }
     })
 
+  }
+
+  function onMarkerClick(marker, position, map) {
+    let id = `${marker.position.lat()},${marker.position.lng()}`;
+    const infowindow = new window.google.maps.InfoWindow({
+        content: `<div>
+            <div>Latitude: ${marker.position.lat()}</div>
+            <div>Longitude: ${marker.position.lng()}</div>
+            <div>CCMS No.: ${position['CCMS NO']}</div>
+            <div>Zone: ${position['Zone']}</div>
+            <div>Type of Light: ${position['Type of Light']}</div>
+            <div>No. Of Lights: ${position['No. Of Lights']}</div>
+            <div>Wattage: ${parseInt(position['Connected Load']/position['No. Of Lights'])}</div>
+            <div>Connected Load: ${position['Connected Load']}</div>
+            <div>status: ${marker.status ? "Not Working" : "Working"}</div>
+        </div>`,
+    });
+    infowindow.open({
+        anchor: marker,
+        map,
+        shouldFocus: false,
+    })
+   
   }
 
   return (
@@ -106,8 +142,10 @@ function Home({lights}) {
         showDarkRoute={showDarkRoute}
         distanceFromStreet={distanceFromStreet}
         darkStretchThreshold={darkStretchThreshold}
+        distanceFromStreetDark={distanceFromStreetDark}
         setDistanceFromStreet={setDistanceFromStreet}
         setDarkStretchThreshold={setDarkStretchThreshold}
+        setDistanceFromStreetDark={setDistanceFromStreetDark}
         MIN_THRESH_DARK={MIN_THRESH_DARK}
         MAX_THRESH_DARK={MAX_THRESH_DARK}
         MIN_THRESH_ROUTE={MIN_THRESH_ROUTE}
@@ -127,6 +165,8 @@ function Home({lights}) {
           routeData={showRoute? routeData: null}
           darkroutes={showDarkRoute?darkroutes:[]}
           darkDistances = {showDarkRoute?darkDistances:[]}
+          allLightsData = {showAllStreetLights ? allLightsData : []}
+          onMarkerClick={onMarkerClick}
         />
       </Wrapper>
     </div>
