@@ -31,7 +31,8 @@ function Map({children, className, center, zoom, clustererData, routeData, route
     React.useEffect(() => {
         if(heatmap.current) heatmap.current.setMap(null);
         if(!heatmapData) return;
-        heatmap.current = new window.google.maps.visualization.HeatmapLayer({map, data: heatmapData});
+        var heatMapNewData = heatmapData.map(position => new window.google.maps.LatLng(position['LatLng']));
+        heatmap.current = new window.google.maps.visualization.HeatmapLayer({map, data: heatMapNewData});
     }, [map, heatmapData])
 
     // plot clusterer if clustererData supplied
