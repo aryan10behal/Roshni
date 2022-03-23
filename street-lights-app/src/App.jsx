@@ -1,23 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState,useContext  } from 'react';
 import { AppBar, Button, CircularProgress, Toolbar, Typography } from '@mui/material';
 import Home from './Components/Home';
 import './App.scss'
 import Report from './Components/Report';
 import Admin from './Components/Admin';
+import Login from "./Components/Login";
+import Register from './Components/Register';
 import env from "react-dotenv";
+import { UserContext } from "./context/UserContext";
 
 function App() {
     const [lights, setLights] = useState([]);
     const [loading, setLoading] = useState(false);
   
+    const [message, setMessage] = useState("");
+    const [token] = useContext(UserContext);
 
-    const pages = ['Home', 'Report', 'About', 'Admin']
+
+    const pages = ['Home', 'Report', 'About', 'Admin','Login','Register']
     const [currPage, setCurrPage] = useState(pages[0]);
     const page_component = {
         'Home': <Home lights={lights} />,
         'Report': <Report lights={lights} />,
         'About': <div></div>,
-        'Admin': <Admin setLights = {setLights} />
+        'Admin': <Admin setLights = {setLights} />,
+        'Login': <Login />,
+        'Register': <Register/>
     }
 
     function openPage(page) {
@@ -25,12 +33,20 @@ function App() {
     }
 
     function fetchLights(callback, err) {
+
+        function positionData(position){
+
+            var latLng = new window.google.maps.LatLng({'lng':position['lng'], 'lat':position['lat']});
+            var positionData = {'LatLng': latLng, 'CCMS NO':position['CCMS NO'], 'Zone':position['Zone'], 'Type of Light':position['Type of Light'], 'No. Of Lights':position['No. Of Lights'], 'Ward No.':position['Ward No.'] ,'Connected Load':position['Connected Load']};
+            return positionData;
+        }
         if(lights.length > 0) return callback(lights);
         setLoading(true);
         fetch(env.BACKEND + `/streetlights`)
         .then(response => response.json())
         .then((data) => {
-            let temp = data.map(position => new window.google.maps.LatLng(position));
+
+            let temp = data.map(position => positionData(position));
             setLights(temp)
             callback(temp);
             setLoading(false);

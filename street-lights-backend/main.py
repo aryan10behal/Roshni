@@ -1,10 +1,10 @@
 from audioop import mul
 from cgi import print_environ
 from fileinput import close
-from datetime import datetime
 from turtle import distance
+from datetime import datetime
 from warnings import filters
-from fastapi import FastAPI, Request, File, UploadFile
+from fastapi import FastAPI, Request, File, UploadFile, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import pymongo
 import requests
@@ -17,6 +17,10 @@ from math import radians, cos, sin, asin, sqrt, acos, atan2, pow, degrees, dist,
 from timeit import default_timer as timer
 from csv import writer
 import pandas as pd
+from typing import List
+import fastapi.security as _security
+import sqlalchemy.orm as _orm
+import services as _services, schemas as _schemas
 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -116,12 +120,26 @@ def perpendicular_checker(p1,p2,p3):
     # PR = np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
     # PQ = np.sqrt((x[:] - p1[0]) ** 2 + (y[:] - p1[1]) ** 2)
     # QR = np.sqrt((x[:] - p2[0]) ** 2 + (y[:] - p2[1]) ** 2)
-    fine_lights = p3[np.logical_and((PQ[:] + QR[:] - 2 <= PR),(PR <= PQ[:] + QR[:] + 2))]
+    fine_lights = p3[PR == PQ[:] + QR[:]]
     return fine_lights
 
 
-def find_perpendiculars(lights_considered, path):
+def find_perpendiculars(lights_considered, path, start_location, end_location):
     perpendiculars = []
+    perpendiculars.append({
+            'lat': start_location[0]['lat'],
+            'lng': start_location[0]['lng'],
+            'p1': (0, 0),
+            'p2': (0,0),
+            'dist': 0
+        })
+    perpendiculars.append({
+            'lat': end_location[0]['lat'],
+            'lng': end_location[0]['lng'],
+            'p1': (0,0),
+            'p2': (0,0),
+            'dist': end_location[1],
+        })
     gath = set()
     for a, b, p1, p2 in lights_considered:
         p3 = (a, b)
@@ -216,16 +234,98 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat']} for streetlight in db["streetlights"].find() if streetlight['lng'] and streetlight['lat']]
+all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] ,'Connected Load':streetlight['Connected Load']} for streetlight in db["streetlights"].find() if streetlight['lng'] and streetlight['lat']]
+
 
 light_coordinates = np.array([[streetlight['lat'], streetlight['lng']] for streetlight in all_lights])
+
+@app.post("/api/users")
+async def create_user(user: _schemas.UserCreate, db: _orm.Session = Depends(_services.get_db)):
+    db_user = await _services.get_user_by_email(user.email, db)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already in use")
+    
+    user = await _services.create_user(user, db)
+    print(user)
+    
+    return await _services.create_token(user)
+
+
+@app.post("/api/token")
+async def generate_token(
+    form_data: _security.OAuth2PasswordRequestForm = Depends(),
+    db: _orm.Session = Depends(_services.get_db),
+):
+    user = await _services.authenticate_user(form_data.username, form_data.password, db)
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid Credentials")
+
+    return await _services.create_token(user)
+
+
+@app.get("/api/users/me", response_model=_schemas.User)
+async def get_user(user: _schemas.User = Depends(_services.get_current_user)):
+    return user
+
+
+@app.post("/api/leads", response_model=_schemas.Lead)
+async def create_lead(
+    lead: _schemas.LeadCreate,
+    user: _schemas.User = Depends(_services.get_current_user),
+    db: _orm.Session = Depends(_services.get_db),
+):
+    return await _services.create_lead(user=user, db=db, lead=lead)
+
+
+@app.get("/api/leads", response_model=List[_schemas.Lead])
+async def get_leads(
+    user: _schemas.User = Depends(_services.get_current_user),
+    db: _orm.Session = Depends(_services.get_db),
+):
+    return await _services.get_leads(user=user, db=db)
+
+
+@app.get("/api/leads/{lead_id}", status_code=200)
+async def get_lead(
+    lead_id: int,
+    user: _schemas.User = Depends(_services.get_current_user),
+    db: _orm.Session = Depends(_services.get_db),
+):
+    return await _services.get_lead(lead_id, user, db)
+
+
+@app.delete("/api/leads/{lead_id}", status_code=204)
+async def delete_lead(
+    lead_id: int,
+    user: _schemas.User = Depends(_services.get_current_user),
+    db: _orm.Session = Depends(_services.get_db),
+):
+    await _services.delete_lead(lead_id, user, db)
+    return {"message", "Successfully Deleted"}
+
+
+@app.put("/api/leads/{lead_id}", status_code=200)
+async def update_lead(
+    lead_id: int,
+    lead: _schemas.LeadCreate,
+    user: _schemas.User = Depends(_services.get_current_user),
+    db: _orm.Session = Depends(_services.get_db),
+):
+    await _services.update_lead(lead_id, lead, user, db)
+    return {"message", "Successfully Updated"}
+
+
+@app.get("/api")
+async def root():
+    return {"message": "Awesome Leads Manager"}
 
 
 
 @app.get("/streetlights")
 def read_item():
-    print(len(all_lights))
-    return all_lights
+    print(len(all_lights[:10000]))
+    return all_lights[:10000]
 
 @app.get("/route")
 def get_route(req: Request):
@@ -234,9 +334,16 @@ def get_route(req: Request):
     source = request_args['source']
     destination = request_args['destination']
 
+    # source = "govindpuri"
+    # destination = "iiitd"
+    # light_distance_from_path = 100
+    # dark_route_threshold = 100
+
     # in meter
     light_distance_from_path = float(request_args['distanceFromPath'])
     dark_route_threshold = float(request_args['darkRouteThreshold'])
+
+
 
     # light_distance_from_path = 10
     # dark_route_threshold = 100
@@ -251,6 +358,9 @@ def get_route(req: Request):
     route_duplicate = []
     path = dict()
 
+    start_location = [directions_api_response[0]['legs'][0]['start_location'], 0]
+    end_location = [directions_api_response[0]['legs'][0]['end_location'], directions_api_response[0]['legs'][0]['distance']['value']]
+
     for direction in directions_api_response[0]['legs'][0]['steps']:
         polyline = googlemaps.convert.decode_polyline(direction['polyline']['points'])
         route_duplicate += polyline
@@ -260,6 +370,7 @@ def get_route(req: Request):
     for i in range(1, len(route_duplicate)):
         if route_duplicate[i-1] != route_duplicate[i]:
             route.append(route_duplicate[i])
+    
     
     total_distance = 0
     path[(route[0]['lat'], route[0]['lng'])] = total_distance 
@@ -289,7 +400,7 @@ def get_route(req: Request):
     start = timer()
 
     lights_considered = [[x[0], x[1], close_lights[x][0], close_lights[x][1]] for x in close_lights]
-    perpendiculars, perpendiculars_list, gath = find_perpendiculars(lights_considered, path)
+    perpendiculars, perpendiculars_list, gath = find_perpendiculars(lights_considered, path, start_location, end_location)
 
     path = sorted(path.items(), key=lambda kv: kv[1])
     
@@ -310,28 +421,19 @@ def get_route(req: Request):
     print(end - start) 
     return output
 
-@app.get("/report")
-def report(req: Request):
-    request_args = dict(req.query_params)
-    lat = request_args['lat']
-    lng = request_args['lng']
-    print('report', {'lat': lat, 'lng': lng, 'timestamp': str(datetime.now())})
-    db['reports'].insert_one({'lat': lat, 'lng': lng, 'timestamp': str(datetime.now())})
-    return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp']}, db['reports'].find()))
-
-@app.get("/reports")
-def get_reports():
-    return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp']}, db['reports'].find()))
 
 
 @app.get("/addLight")
 def addLight(req: Request):
+    global light_coordinates
     request_args = dict(req.query_params)
     latitude = float(request_args['latitude'])
     longitude = float(request_args['longitude'])
     if({'lng': longitude, 'lat':latitude} in all_lights):
         return
     all_lights.append({'lng': longitude, 'lat':latitude})
+    light_coordinates = np.append(light_coordinates, [[latitude, longitude]], axis = 0)
+
     db['streetlights'].insert_one({'lng': longitude, 'lat':latitude})
 
     with open("../street-lights-db/data/Added Lights.csv") as f_object:
@@ -347,12 +449,14 @@ def addLight(req: Request):
 
 @app.get("/deleteLight")
 def deleteLight(req: Request):
+    global light_coordinates
     request_args = dict(req.query_params)
     latitude = float(request_args['latitude'])
     longitude = float(request_args['longitude'])
     if({'lng': longitude, 'lat':latitude} not in all_lights):
         return
     all_lights.remove({'lng': longitude, 'lat':latitude})
+    light_coordinates = np.delete(light_coordinates, np.argwhere(light_coordinates == [[latitude, longitude]]))
     db['streetlights'].delete_one({'lng': longitude, 'lat':latitude})
     with open("../street-lights-db/data/Deleted Lights.csv") as f_object:
         text = f_object.read()
@@ -366,9 +470,24 @@ def deleteLight(req: Request):
     return
 
 
+@app.get("/report")
+def report(req: Request):
+    request_args = dict(req.query_params)
+    lat = request_args['lat']
+    lng = request_args['lng']
+    print('report', {'lat': lat, 'lng': lng, 'timestamp': str(datetime.now())})
+    db['reports'].insert_one({'lat': lat, 'lng': lng, 'timestamp': str(datetime.now())})
+    return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp']}, db['reports'].find()))
+
+@app.get("/reports")
+def get_reports():
+    return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp']}, db['reports'].find()))
+
+
 
 @app.post("/addLightsFile")
 def addLightsFile(file: UploadFile = File(...)):
+    global light_coordinates
     df = pd.read_csv(file.file)
     lampposts = []
     df_final_latlng = df[['Longitude', 'Latitude']]
@@ -380,8 +499,8 @@ def addLightsFile(file: UploadFile = File(...)):
     db_list = []
     for pole in lampposts:
         if pole not in all_lights:
-
             all_lights.append({'lng':pole['lng'], 'lat':pole['lat']})
+            light_coordinates = np.append(light_coordinates, [[pole['lng'], pole['lat']]], axis = 0)
             db_list.append(pole)
     if(len(db_list)!=0):
         db['streetlights'].insert_many(db_list)
@@ -399,7 +518,8 @@ def addLightsFile(file: UploadFile = File(...)):
  
 
 @app.post("/deleteLightsFile")
-def addLightsFile(file: UploadFile = File(...)):
+def deleteLightsFile(file: UploadFile = File(...)):
+    global light_coordinates
     df = pd.read_csv(file.file)
     lampposts = []
     df_final_latlng = df[['Longitude', 'Latitude']]
@@ -411,8 +531,8 @@ def addLightsFile(file: UploadFile = File(...)):
     db_list = []
     for pole in lampposts:
         if pole in all_lights:
-
             all_lights.remove({'lng':pole['lng'], 'lat':pole['lat']})
+            light_coordinates = np.delete(light_coordinates, np.argwhere(light_coordinates == [[pole['lng'], pole['lat']]]))
             db_list.append(pole)
     if(len(db_list)!=0):
         for pole in db_list:

@@ -6,3 +6,7 @@ pymongo
 numpy
 pandas
 python-multipart
+passlib
+bcrypt
+SQLAlchemy
+pyjwt

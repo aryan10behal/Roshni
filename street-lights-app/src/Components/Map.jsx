@@ -31,7 +31,8 @@ function Map({children, className, center, zoom, clustererData, routeData, route
     React.useEffect(() => {
         if(heatmap.current) heatmap.current.setMap(null);
         if(!heatmapData) return;
-        heatmap.current = new window.google.maps.visualization.HeatmapLayer({map, data: heatmapData});
+        var heatMapNewData = heatmapData.map(position => new window.google.maps.LatLng(position['LatLng']));
+        heatmap.current = new window.google.maps.visualization.HeatmapLayer({map, data: heatMapNewData});
     }, [map, heatmapData])
 
     // plot clusterer if clustererData supplied
@@ -39,8 +40,8 @@ function Map({children, className, center, zoom, clustererData, routeData, route
         if(clusterer.current) clusterer.current.setMap(null);
         if(!clustererData) return;
             var markers = clustererData.map(position => {
-                var marker = new window.google.maps.Marker({position, icon: env.BACKEND+"/icon"});
-                marker.addListener("click", () => onMarkerClick(marker, map));
+                var marker = new window.google.maps.Marker({position:position['LatLng'], icon: env.BACKEND+"/icon"});
+                marker.addListener("click", () => onMarkerClick(marker, position, map));
                 return marker;
             });
             clusterer.current = new MarkerClusterer({
