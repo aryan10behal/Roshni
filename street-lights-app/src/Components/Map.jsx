@@ -40,7 +40,22 @@ function Map({children, className, center, zoom, clustererData, routeData, route
         if(clusterer.current) clusterer.current.setMap(null);
         if(!clustererData) return;
             var markers = clustererData.map(position => {
-                var marker = new window.google.maps.Marker({position:position['LatLng'], icon: env.BACKEND+"/icon"});
+                var marker;
+                if(position['Connected Load']=='0' && position['Actual Load']=='0'){
+                    marker = new window.google.maps.Marker({position:position['LatLng'], icon: env.BACKEND+"/icon"});
+                }
+                else if(parseFloat(position['Actual Load'])/parseFloat(position['Connected Load'])<=0.25){
+                    marker = new window.google.maps.Marker({position:position['LatLng'], icon: env.BACKEND+"/icon_red"});
+                }
+                else if(parseFloat(position['Actual Load'])/parseFloat(position['Connected Load'])>=0.75){
+                   
+                    marker = new window.google.maps.Marker({position:position['LatLng'], icon: env.BACKEND+"/icon_green"});
+                }
+                else{
+                    marker = new window.google.maps.Marker({position:position['LatLng'], icon: env.BACKEND+"/icon_yellow"});
+                    console.log(marker.position.lat(), marker.position.lng())
+                }
+
                 marker.addListener("click", () => onMarkerClick(marker, position, map));
                 return marker;
             });
