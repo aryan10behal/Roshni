@@ -37,7 +37,7 @@ function App() {
         function positionData(position){
 
             var latLng = new window.google.maps.LatLng({'lng':position['lng'], 'lat':position['lat']});
-            var positionData = {'LatLng': latLng, 'CCMS NO':position['CCMS NO'], 'Zone':position['Zone'], 'Type of Light':position['Type of Light'], 'No. Of Lights':position['No. Of Lights'], 'Ward No.':position['Ward No.'] ,'Connected Load':position['Connected Load']};
+            var positionData = {'LatLng': latLng, 'CCMS NO':position['CCMS_no'], 'Zone':position['zone'], 'Type of Light':position['Type of Light'], 'No. Of Lights':position['No. Of Lights'], 'Ward No.':position['Ward No.'] ,'Connected Load':position['Connected Load'], 'Actual Load':position['Actual Load']};
             return positionData;
         }
         if(lights.length > 0) return callback(lights);
@@ -61,9 +61,12 @@ function App() {
         })
     }
 
+
     useEffect(() => {
         if(lights.length > 0) return;
         fetchLights(() => {}, (err) => console.log(err));
+        setInterval(() => fetchLights(() => {}, (err) => console.log(err)), 50000);
+        // f
     }, [lights])
 
     return (
