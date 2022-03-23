@@ -113,6 +113,7 @@ function Home({lights}) {
             <div>No. Of Lights: ${position['No. Of Lights']}</div>
             <div>Wattage: ${parseInt(position['Connected Load']/position['No. Of Lights'])}</div>
             <div>Connected Load: ${position['Connected Load']}</div>
+            <div>Actual Load: ${position['Actual Load']}</div>
             <div>status: ${marker.status ? "Not Working" : "Working"}</div>
         </div>`,
     });
