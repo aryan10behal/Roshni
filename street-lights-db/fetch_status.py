@@ -23,13 +23,15 @@ def fetch():
 
 def insert(data):
     for i in range(len(data)):
-        ccms_id = data[i]['ccms_no'][-7:]
-        data[i]['ccms_no'] = 'SZ-' + ccms_id
+        ccms_id = data[i]['ccms_no'][0:8]+"W"+data[i]['ccms_no'][9:]
+
+        data[i]['ccms_no'] = ccms_id
     ccms.insert_many(data)
 
 while True:
     data = fetch()
     ccms.drop()
     insert(data)
+
     print('updated')
-    sleep(10)
+    sleep(1000)
