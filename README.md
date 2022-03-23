@@ -12,9 +12,22 @@ python3 load.py
 ```
 
 ## Backend
-Start the backend in development mode by running 
+
+Go to backend folder
+
 ```
 cd street-lights-backend
+```
+
+To create database for Users (authentication), Run the following in python console
+```
+import services
+services.create_database()
+exit()
+```
+
+Start the backend in development mode by running 
+```
 uvicorn main:app --reload --host 0.0.0.0
 ```
 Start the backend in production mode using
