@@ -234,7 +234,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] ,'Connected Load':streetlight['Connected Load']} for streetlight in db["streetlights"].find() if streetlight['lng'] and streetlight['lat']]
+all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] ,'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load']} for streetlight in db["streetlights"].find() if streetlight['lng'] and streetlight['lat']]
 
 
 light_coordinates = np.array([[streetlight['lat'], streetlight['lng']] for streetlight in all_lights])
@@ -324,8 +324,17 @@ async def root():
 
 @app.get("/streetlights")
 def read_item():
-    print(len(all_lights[:10000]))
-    return all_lights[:10000]
+    ccms_arr=[{'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']]
+    
+    for light in all_lights:
+        for ccms_data in ccms_arr:
+            if(light['CCMS_no']==ccms_data['ccms_no']):
+                light['Connected Load'] = ccms_data['connected_load']
+                light['Actual Load'] = ccms_data['actual_load']
+    
+
+
+    return all_lights
 
 @app.get("/route")
 def get_route(req: Request):
@@ -553,6 +562,18 @@ def deleteLightsFile(file: UploadFile = File(...)):
 @app.get("/icon")
 def get_icon():
     return FileResponse("lamp-glow.png")
+
+@app.get("/icon_red")
+def get_icon():
+    return FileResponse("red.png")
+
+@app.get("/icon_green")
+def get_icon():
+    return FileResponse("green.png")
+
+@app.get("/icon_yellow")
+def get_icon():
+    return FileResponse("yellow.png")
 
 @app.get("/icon2")
 def get_icon2():
