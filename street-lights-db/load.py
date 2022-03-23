@@ -37,7 +37,7 @@ df_final_latlng = df_final_latlng.dropna(subset=['Longitude', 'Latitude'])
 df_final_latlng = df_final_latlng.fillna('')
 
 temp = df_final_latlng.values.tolist()
-temp = map(lambda x : {'lat':x[1], 'lng':x[0], 'CCMS_no': x[2], 'zone': x[3], 'Type of Light':x[4], 'No. Of Lights':x[5], 'Ward No.':x[6], 'wattage': x[7],'Connected Load':x[8] }, temp)
+temp = map(lambda x : {'lat':x[1], 'lng':x[0], 'CCMS_no': x[2], 'zone': x[3], 'Type of Light':x[4], 'No. Of Lights':x[5], 'Ward No.':x[6], 'wattage': x[7],'Connected Load':0, 'Actual Load':0 }, temp)
 lampposts += temp
 
 # for file in files:
