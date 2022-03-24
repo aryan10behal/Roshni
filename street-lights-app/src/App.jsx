@@ -65,7 +65,7 @@ function App() {
     useEffect(() => {
         if(lights.length > 0) return;
         fetchLights(() => {}, (err) => console.log(err));
-        setInterval(() => fetchLights(() => {}, (err) => console.log(err)), 50000);
+        setInterval(() => fetchLights(() => {}, (err) => console.log(err)), 500000);
         // f
     }, [lights])
 

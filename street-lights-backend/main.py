@@ -333,7 +333,7 @@ def read_item():
                 light['Actual Load'] = ccms_data['actual_load']
     
 
-
+  
     return all_lights
 
 @app.get("/route")
