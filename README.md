@@ -14,7 +14,7 @@ To load the data into the mongodb instance, run
 ```
 cd street-lights-db
 python3 load.py
-python3 fetch_lights.py
+python3 fetch_status.py
 ```
 
 ## Backend
