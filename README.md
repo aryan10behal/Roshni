@@ -4,6 +4,11 @@ The frontend and backend for the women safety project
 ## Database
 Install mongodb and start a mongodb instance using 
 ```sudo mongod --fork --config /etc/mongod.conf```
+For mac:
+```
+sudo pkill -f mongod
+sudo mongod --config /usr/local/etc/mongod.conf --fork
+```
 
 To load the data into the mongodb instance, run 
 ```
