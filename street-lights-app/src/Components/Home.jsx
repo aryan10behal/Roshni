@@ -109,6 +109,7 @@ function Home({lights}) {
   function onMarkerClick(marker, position, map) {
 
     let id = `${marker.position.lat()},${marker.position.lng()}`;
+    console.log(position['Actual Load']);
     const infowindow = new window.google.maps.InfoWindow({
         content: `<div>
             <div>Latitude: ${marker.position.lat()}</div>

@@ -61,6 +61,123 @@ function Map({
     });
   }, [map, heatmapData]);
 
+    React.useEffect(() => {
+        if(map) {
+            map.setOptions({center, zoom})
+        }
+    }, [map, center, zoom])
+
+    // plot heatmap if heatmapData supplied
+    React.useEffect(() => {
+        if(heatmap.current) heatmap.current.setMap(null);
+        if(!heatmapData) return;
+        var heatMapNewData = heatmapData.map(position => new window.google.maps.LatLng(position['LatLng']));
+        heatmap.current = new window.google.maps.visualization.HeatmapLayer({map, data: heatMapNewData});
+    }, [map, heatmapData])
+
+    // plot clusterer if clustererData supplied
+    React.useEffect(() => {
+        if(clusterer.current) clusterer.current.setMap(null);
+        if(!clustererData) return;
+            var markers = clustererData.map(position => {
+                var marker;
+                if(position['Connected Load']=='0' && position['Actual Load']=='0'){
+                    marker = new window.google.maps.Marker({position:position['LatLng'], icon: env.BACKEND+"/icon"});
+                }
+                else if(parseFloat(position['Actual Load'])/parseFloat(position['Connected Load'])<=0.25){
+                    marker = new window.google.maps.Marker({position:position['LatLng'], icon: env.BACKEND+"/icon_red"});
+                }
+                else if(parseFloat(position['Actual Load'])/parseFloat(position['Connected Load'])>=0.75){
+                   
+                    marker = new window.google.maps.Marker({position:position['LatLng'], icon: env.BACKEND+"/icon_green"});
+                }
+                else{
+                    marker = new window.google.maps.Marker({position:position['LatLng'], icon: env.BACKEND+"/icon_yellow"});
+
+                }
+
+                marker.addListener("click", () => onMarkerClick(marker, position, map));
+                return marker;
+            });
+            clusterer.current = new MarkerClusterer({
+                map, 
+                markers, 
+                algorithm: new KmeansAlgorithm({
+                    maxZoom: 25, 
+                    numberOfClusters: (count, zoom) => count < 200 ? count : Math.max(1, zoom - 8)
+                })
+            });
+    }, [map, clustererData])
+    
+    //plot route, neighbourin streetlights and dark regions if routeData supplied
+    React.useEffect(() => {
+        if(routePlot.current) {
+            routePlot.current.polyline.setMap(null);
+            routePlot.current.A.setMap(null);
+            routePlot.current.B.setMap(null);
+            routePlot.current.routeLights.forEach(routeLight => {
+                routeLight.setMap(null);
+            });
+        }
+        if(!routeData) return;
+        routePlot.current = {
+            polyline: new window.google.maps.Polyline({map, path: routeData.route, strokeColor: 'DodgerBlue'}),
+            A: new window.google.maps.Marker({map, position: routeData.route[0], label: 'A'}),
+            B: new window.google.maps.Marker({map, position: routeData.route[routeData.route.length - 1], label: 'B'}),
+            routeLights: routeData.routeLights.map(position => {
+                var marker;
+                if(position['Connected Load']=='0' && position['Actual Load']=='0'){
+                    marker = new window.google.maps.Marker({map, position:position['LatLng'], icon: env.BACKEND+"/icon"});
+                }
+                else if(parseFloat(position['Actual Load'])/parseFloat(position['Connected Load'])<=0.25){
+                    marker = new window.google.maps.Marker({map, position:position['LatLng'], icon: env.BACKEND+"/icon_red"});
+                }
+                else if(parseFloat(position['Actual Load'])/parseFloat(position['Connected Load'])>=0.75){
+                   
+                    marker = new window.google.maps.Marker({map, position:position['LatLng'], icon: env.BACKEND+"/icon_green"});
+                }
+                else{
+                    marker = new window.google.maps.Marker({map, position:position['LatLng'], icon: env.BACKEND+"/icon_yellow"});
+                 
+                }
+
+                marker.addListener("click", () => onMarkerClick(marker, position, map));
+    
+            return marker;})        
+        };
+        map.fitBounds(
+            new window.google.maps.LatLngBounds(
+                routeData.bounds.southwest, 
+                routeData.bounds.northeast
+            )
+        );
+        
+        
+  
+    }, [map, routeData])
+
+
+    React.useEffect(() => {
+        if(darkPlot.current){
+            darkPlot.current.paths.forEach(path=> {
+                path.setMap(null);
+            });
+            darkPlot.current.darkSpots.forEach(darkSpot => {
+                darkSpot.setMap(null);
+            });
+        }
+        if(!darkroutes){
+            
+            return;
+        } 
+        var darkRoutesFinal = []
+        for(let i=0;i<darkroutes.length;i++){
+            var darkRoutesTemp = []
+            for(let j=0; j<darkroutes[i].length; j++){
+                darkRoutesTemp[j] = new window.google.maps.LatLng(darkroutes[i][j])
+            }
+            darkRoutesFinal[i]=darkRoutesTemp;
+        }
 
   React.useEffect(() => {
     if (clusterer.current) clusterer.current.setMap(null);
@@ -335,4 +452,3 @@ function Map({
 }
 
 export default Map;
-
