@@ -37,7 +37,7 @@ function App() {
         function positionData(position){
 
             var latLng = new window.google.maps.LatLng({'lng':position['lng'], 'lat':position['lat']});
-            var positionData = {'LatLng': latLng, 'CCMS NO':position['CCMS_no'], 'Zone':position['zone'], 'Type of Light':position['Type of Light'], 'No. Of Lights':position['No. Of Lights'], 'Ward No.':position['Ward No.'] ,'Connected Load':position['Connected Load'], 'Actual Load':position['Actual Load']};
+            var positionData = {'LatLng': latLng, 'CCMS NO':position['CCMS_no'], 'Zone':position['zone'], 'Type of Light':position['Type of Light'], 'No. Of Lights':position['No. Of Lights'], 'Ward No.':position['Ward No.'] , 'Wattage':position['Wattage'], 'Connected Load':position['Connected Load'], 'Actual Load':position['Actual Load']};
             return positionData;
         }
         if(lights.length > 0) return callback(lights);

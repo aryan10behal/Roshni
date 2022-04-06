@@ -45,6 +45,9 @@ function Admin({setLights}) {
     const [selectedFileDelete, setSelectedFileDelete] = useState();
     const [isFilePickedDelete, setIsFilePickedDelete] = useState(false);
 
+    const [showReports, setShowReports] = useState(false);
+    const [showResolvedReports, setShowResolvedReports] = useState(false);
+
     const changeHandlerAdd = (event) => {
         setSelectedFileAdd(event.target.files[0]);
         event.target.files[0] && setIsFilePickedAdd(true);
@@ -88,8 +91,10 @@ function Admin({setLights}) {
                 aria-labelledby="demo-radio-buttons-group-label"
                
                 name="radio-buttons-group">
-                <FormControlLabel value = "addStreetLight" control={<Radio  /> } onChange={(e) => {setAddStreetLight(e.target.checked); setDeleteStreetLight(!e.target.checked)}} label="Add streetlight" />
-                <FormControlLabel value = "deleteStreetLight" control={<Radio  />} onChange={(e) => {setDeleteStreetLight(e.target.checked); setAddStreetLight(!e.target.checked)}}  label="Delete streetlight" />
+                <FormControlLabel value = "addStreetLight" control={<Radio  /> } onChange={(e) => {setAddStreetLight(e.target.checked); setDeleteStreetLight(!e.target.checked); setShowReports(!e.target.checked); setShowResolvedReports(!e.target.checked)}} label="Add streetlight" />
+                <FormControlLabel value = "deleteStreetLight" control={<Radio  />} onChange={(e) => {setDeleteStreetLight(e.target.checked); setAddStreetLight(!e.target.checked); setShowReports(!e.target.checked); setShowResolvedReports(!e.target.checked)}}  label="Delete streetlight" />
+                <FormControlLabel value = "showReports" control={<Radio  />} onChange={(e) => {setShowReports(e.target.checked); setAddStreetLight(!e.target.checked); setDeleteStreetLight(!e.target.checked); setShowResolvedReports(!e.target.checked)}}  label="Show Reports" />
+                <FormControlLabel value = "showResolvedReports" control={<Radio  />} onChange={(e) => {setShowResolvedReports(e.target.checked); setAddStreetLight(!e.target.checked); setDeleteStreetLight(!e.target.checked); setShowReports(!e.target.checked)}}  label="Show Resolved Reports" />
             </RadioGroup>
                 
     

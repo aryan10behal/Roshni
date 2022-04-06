@@ -1,8 +1,8 @@
 import React from "react";
 import Button from '@mui/material/Button';
-import { Checkbox, CircularProgress, FormControlLabel, Slider, TextField, Typography } from "@mui/material";
+import { Checkbox, CircularProgress, FormControlLabel, Slider, TextField, Typography, Radio } from "@mui/material";
 
-function Input({setShowAllStreetlights, setShowHeatmap, showRoute, setShowRoute, setSrc, setDest, setSrcDark, setDestDark, fetchRouteData, fetchDarkRouteData, loading, showDarkRoute, setDarkRoute,
+function Input({setShowAllStreetlights, showAllStreetLights, setShowLiveData, showLiveData, setShowOtherData, showOtherData, setShowHeatmap, showRoute, setShowRoute, setSrc, setDest, setSrcDark, setDestDark, fetchRouteData, fetchDarkRouteData, loading, showDarkRoute, setDarkRoute,
     distanceFromStreet,
     darkStretchThreshold,
     distanceFromStreetDark,
@@ -21,6 +21,12 @@ function Input({setShowAllStreetlights, setShowHeatmap, showRoute, setShowRoute,
             <div className="Layers">
                 <FormControlLabel control={<Checkbox onChange={(e) => setShowHeatmap(e.target.checked)} />} label="Heatmap" />
                 <FormControlLabel control={<Checkbox onChange={(e) => setShowAllStreetlights(e.target.checked)} />} label="All Street Lights" />
+                {showAllStreetLights? (
+                    <div className="InputOp">
+                    <FormControlLabel control={<Checkbox onChange={(e) => setShowLiveData(e.target.checked)} />} label="Live Data" />
+                    <FormControlLabel control={<Checkbox onChange={(e) => setShowOtherData(e.target.checked)} />} label="Other Data" />
+                    </div>
+                ):""}
                 <FormControlLabel control={<Checkbox onChange={(e) => setShowRoute(e.target.checked)} />} label="Street Lights on Route" />
                 
             

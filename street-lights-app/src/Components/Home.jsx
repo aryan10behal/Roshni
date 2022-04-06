@@ -20,6 +20,8 @@ function Home({lights}) {
   const [darkbounds, setDarkbounds] = useState({});
 
   const [showAllStreetLights, setShowAllStreetLights] = useState(false);
+  const [showLiveData, setShowLiveData] = useState(false);
+  const [showOtherData, setShowOtherData] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showRoute, setShowRoute] = useState(false);
   const [showDarkRoute, setDarkRoute] = useState(false);
@@ -42,12 +44,12 @@ function Home({lights}) {
 
   function fetchRouteData() {
 
-  //   function positionData(position){
+    function positionData(position){
 
-  //     var latLng = new window.google.maps.LatLng({'lng':position['lng'], 'lat':position['lat']});
-  //     var positionData = {'LatLng': latLng, 'CCMS NO':position['CCMS NO'], 'Zone':position['Zone'], 'Type of Light':position['Type of Light'], 'No. Of Lights':position['No. Of Lights'], 'Ward No.':position['Ward No.'] ,'Connected Load':position['Connected Load']};
-  //     return positionData;
-  // }
+      var latLng = new window.google.maps.LatLng({'lng':position['lng'], 'lat':position['lat']});
+      var positionData = {'LatLng': latLng, 'CCMS NO':position['CCMS_no'], 'Zone':position['zone'], 'Type of Light':position['Type of Light'], 'No. Of Lights':position['No. Of Lights'], 'Ward No.':position['Ward No.'] ,'Wattage':position['Wattage'],'Connected Load':position['Connected Load'], 'Actual Load':position['Actual Load']};
+      return positionData;
+  }
 
     if(!src || !dest) return;
     const axios = require('axios');
@@ -55,9 +57,12 @@ function Home({lights}) {
     fetch(env.BACKEND + `/route?source=${src}&destination=${dest}&darkRouteThreshold=${100}&distanceFromPath=${distanceFromStreet}`)
     .then(response => response.json())
     .then((data) => {
-      setLoading(false);          
+      setLoading(false);  
+      console.log(data);   
+      let temp = data['route_lights'].map(position => positionData(position));     
       setRouteData({
-        routeLights: data['route_lights'].map(position => new window.google.maps.LatLng(position)),
+        
+        routeLights: temp,
         bounds: data['bounds'],
         route: data['route'].map(position => new window.google.maps.LatLng(position))
       })
@@ -102,6 +107,7 @@ function Home({lights}) {
   }
 
   function onMarkerClick(marker, position, map) {
+
     let id = `${marker.position.lat()},${marker.position.lng()}`;
     const infowindow = new window.google.maps.InfoWindow({
         content: `<div>
@@ -111,17 +117,18 @@ function Home({lights}) {
             <div>Zone: ${position['Zone']}</div>
             <div>Type of Light: ${position['Type of Light']}</div>
             <div>No. Of Lights: ${position['No. Of Lights']}</div>
-            <div>Wattage: ${parseInt(position['Connected Load']/position['No. Of Lights'])}</div>
-            <div>Connected Load: ${position['Connected Load']}</div>
-            <div>Actual Load: ${position['Actual Load']}</div>
+            <div>Wattage: ${parseInt(position['Wattage'])}</div>
+            <div>Connected Load: ${position['Connected Load']!=-1?position['Connected Load']:0}</div>
+            <div>Actual Load: ${position['Actual Load']!=-1?position['Actual Load']:0}</div>
             <div>status: ${marker.status ? "Not Working" : "Working"}</div>
         </div>`,
     });
+  
     infowindow.open({
-        anchor: marker,
-        map,
-        shouldFocus: false,
-    })
+      anchor: marker,
+      map,
+      shouldFocus: false,
+  })
    
   }
 
@@ -129,6 +136,11 @@ function Home({lights}) {
     <div className='App-body'>
       <Input 
         setShowAllStreetlights={setShowAllStreetLights}
+        showAllStreetLights={showAllStreetLights}
+        setShowLiveData={setShowLiveData}
+        showLiveData={showLiveData}
+        setShowOtherData = {setShowOtherData}
+        showOtherData = {showOtherData}
         setShowHeatmap={setShowHeatmap}
         setShowRoute={setShowRoute}
         showRoute={showRoute}
@@ -158,6 +170,7 @@ function Home({lights}) {
         libraries={['visualization']}
       >
         <Map 
+         
           center={center}
           zoom={zoom}
           className="Map"
@@ -167,6 +180,8 @@ function Home({lights}) {
           darkroutes={showDarkRoute?darkroutes:[]}
           darkDistances = {showDarkRoute?darkDistances:[]}
           onMarkerClick={onMarkerClick}
+          showLiveData={showLiveData}
+          showOtherData={showOtherData}
         />
       </Wrapper>
     </div>

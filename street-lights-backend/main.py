@@ -1,6 +1,8 @@
+
 from audioop import mul
 from cgi import print_environ
 from fileinput import close
+from time import time
 from turtle import distance
 from datetime import datetime
 from warnings import filters
@@ -234,10 +236,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] ,'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load']} for streetlight in db["streetlights"].find() if streetlight['lng'] and streetlight['lat']]
+all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load']} for streetlight in db["streetlights"].find() if streetlight['lng'] and streetlight['lat']]
 
 
 light_coordinates = np.array([[streetlight['lat'], streetlight['lng']] for streetlight in all_lights])
+light_data = {(streetlight['lng'], streetlight['lat']):{'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] , 'Wattage':streetlight['Wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load']} for streetlight in all_lights}
 
 @app.post("/api/users")
 async def create_user(user: _schemas.UserCreate, db: _orm.Session = Depends(_services.get_db)):
@@ -325,15 +328,17 @@ async def root():
 @app.get("/streetlights")
 def read_item():
     ccms_arr=[{'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']]
-    
+    start = timer()
     for light in all_lights:
         for ccms_data in ccms_arr:
             if(light['CCMS_no']==ccms_data['ccms_no']):
                 light['Connected Load'] = ccms_data['connected_load']
                 light['Actual Load'] = ccms_data['actual_load']
-    
-
-  
+                light_data[(light['lng'], light['lat'])]['Connected Load'] = ccms_data['connected_load']
+                light_data[(light['lng'], light['lat'])]['Actual Load'] = ccms_data['actual_load']
+                
+    end = timer()
+    print("loading time", end-start)
     return all_lights
 
 @app.get("/route")
@@ -405,8 +410,8 @@ def get_route(req: Request):
                 close_lights[current_light] = (p1, p2, distances[j])
     
     end = timer()
-    print(end - start) 
-    start = timer()
+    print("main algo time", end - start) 
+    
 
     lights_considered = [[x[0], x[1], close_lights[x][0], close_lights[x][1]] for x in close_lights]
     perpendiculars, perpendiculars_list, gath = find_perpendiculars(lights_considered, path, start_location, end_location)
@@ -416,7 +421,7 @@ def get_route(req: Request):
     dark_routes, dark_route_bounds, dark_spot_distances = find_dark_spots(perpendiculars_list, path, dark_route_threshold)
 
     # gath = [{'lat': x[0], 'lng': x[1]} for x in gath]
-    close_lights = [{'lat': x[0], 'lng': x[1]} for x in close_lights]
+    close_lights = [{'lat': x[0], 'lng': x[1], 'CCMS_no':light_data[(x[1],x[0])]['CCMS_no'], 'zone':light_data[(x[1],x[0])]['zone'], 'Type of Light':light_data[(x[1],x[0])]['Type of Light'], 'No. Of Lights':light_data[(x[1],x[0])]['No. Of Lights'], 'Ward No.':light_data[(x[1],x[0])]['Ward No.'] , 'Wattage':light_data[(x[1],x[0])]['Wattage'], 'Connected Load':light_data[(x[1],x[0])]['Connected Load'], 'Actual Load':light_data[(x[1],x[0])]['Actual Load']} for x in close_lights]
     # close_lights = [{'lat': x[0], 'lng': x[1]} for x in lights_considered]
     # close_lights = [{'lat': x[0][0], 'lng': x[0][1]} for x in path]
     # close_lights = [{'lat': x['lat'], 'lng': x['lng']} for x in route]
@@ -424,7 +429,9 @@ def get_route(req: Request):
     dark_route_bounds = []
     # for i in range(len(dark_routes)):
     #     dark_route_bounds.append(directions_api_response[0]['bounds'])
- 
+    
+    print(close_lights[0])
+    print(all_lights[0])
     output = {'route': route, 'route_lights': close_lights, 'bounds': directions_api_response[0]['bounds'], 'dark_routes': dark_routes, 'dark_route_bounds': dark_route_bounds, 'perpendiculars': perpendiculars, 'dark_spot_distances':  dark_spot_distances, 'indicator': perpendiculars}
     end = timer()
     print(end - start) 
@@ -559,6 +566,14 @@ def deleteLightsFile(file: UploadFile = File(...)):
     return
 
 
+
+@app.get("/place")
+def get_latlng(req: Request):
+    request_args = dict(req.query_params)
+    place = request_args['query']
+    latlng = maps.directions(place, place)[0]['bounds']['northeast']
+    return latlng
+
 @app.get("/icon")
 def get_icon():
     return FileResponse("lamp-glow.png")
@@ -578,4 +593,3 @@ def get_icon():
 @app.get("/icon2")
 def get_icon2():
     return FileResponse("light.png")
-

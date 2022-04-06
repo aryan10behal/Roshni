@@ -1,4 +1,4 @@
-import { Alert, Button, IconButton, TextField } from "@mui/material";
+import { Alert, Button, Checkbox, IconButton, TextField, FormControlLabel } from "@mui/material";
 import { useEffect, useState } from "react";
 import Search from "@mui/icons-material/Search";
 import Map from "./Map";
@@ -12,7 +12,7 @@ function Report({lights}) {
     const [zoom, setZoom] = useState(11);
     const [center, setCenter] = useState({lat: 28.6,lng: 77.15});
     const [selectedLight, setSelectedLight] = useState(null);
-    const [reports, setReports] = useState(null)
+    const [reports, setReports] = useState([])
 
     useEffect(() => {
         if(reports == null) {
@@ -81,6 +81,9 @@ function Report({lights}) {
                 zoom={zoom}
                 clustererData={lights}
                 onMarkerClick={onMarkerClick}
+                showLiveData={true}
+                showOtherData={true}
+
             />
         </Wrapper>
     </div>
@@ -90,52 +93,77 @@ function Report({lights}) {
 
 function SelectedLight({light, reports, setReports}) {
     const [status, setStatus] = useState(false);
+    const [Toast, setToast] = useState("");
+    const [report_1, setReport_1] = useState(false);
+    const [report_2, setReport_2] = useState(false);
+    const [report_3, setReport_3] = useState(false);
+    const [report_4, setReport_4] = useState("");
+    const [report_5, setReport_5] = useState("");
     if(light == null) {
         return "";
     }
-    const REPORT = 0, REPORTING = 1;
-    let Button_ = ""
-    let ReportButton = (<Button onClick={reportLight}>Report as not working</Button>)
-    let ReportingButton = (<Button onClick={reportLight} disabled={true}>Report as not working</Button>)
-    let ReportedButton = (<Button onClick={reportLight} disabled={true}>Reported</Button>)
-    let Toast = ""
+    const REPORT = false;
+    const REPORTING = true;
+
+    let Report_1_Checkbox = (<FormControlLabel control={<Checkbox variant="standard" onChange={(e) => setReport_1(e.target.value)}/>} label="Report: not working" />)
+    let Report_2_Checkbox = (<FormControlLabel control={<Checkbox variant="standard" onClick={(e) => setReport_2(e.target.value)} />} label="Report: dim" />)
+    let Report_3_Checkbox = (<FormControlLabel control={<Checkbox variant="standard" onClick={(e) => setReport_3(e.target.value)} />} label="Report: Pole is tilted" />)
+    let Report_4_Textbox = (<TextField variant="standard" label="Other" onChange={(e) => setReport_4(e.target.value)} type = "text" />)
+    let Report_5_Textbox = (<TextField variant="standard" label="Contact Number" onChange={(e) => setReport_5(e.target.value)} type = "text" />)
+
+    let Report_Button = (<Button onClick={() => reportLight(report_1, report_2, report_3, report_4, report_5)}>Report Light</Button>)
+    let Reporting_Button = (<Button disabled={true}>Reporting Light</Button>)
+    let ReportedButton = (<Button disabled={true}>Reported</Button>)
+    
     let FailToast = (<Alert severity="error">Failed to Report</Alert>)
+    let CheckFormToast = (<Alert severity="error">Please choose the problem or specify in other</Alert>)
     let SuccessToast = (<Alert severity="success">Thank you for reporting!</Alert>)
 
-    function reportLight() {
-        console.log("here")
+    function reportLight(option_1, option_2, option_3, option_4, option_5) {
+        if(!option_1 && !option_2 && !option_3 && option_4 == "") {
+            setToast(CheckFormToast);
+            return;
+        }
         setStatus(REPORTING)
-        fetch(`${env.BACKEND}/report?lat=${light.lat}&lng=${light.lng}`)
+        fetch(`${env.BACKEND}/report?lat=${light.lat}&lng=${light.lng}&option_1=${option_1}&option_2=${option_2}&option_3=${option_3}&option_4=${option_4}&option_5=${option_5}`)
         .then((response) => {
             setStatus(REPORT);
             if(response.status == 200) {
-                Toast = SuccessToast;
+                setToast(SuccessToast)
                 response.json().then((data) => {
                     setReports(data);
                 })
             } else {
-                Toast = FailToast;
+                setToast(FailToast)
             }
         }).catch(() => {
             setStatus(REPORT);
-            Toast = FailToast;
+            setToast(FailToast)
         })
     }
 
+    let Report = "";
     if(reports.find((report) => report.lng == light.lng && report.lat == light.lat)) {
-        Button_ = ReportedButton
+        Report = ReportedButton
     } else if(status == REPORTING) {
-        Button_ = ReportingButton
+        Report = Reporting_Button
     } else {
-        Button_ = ReportButton
+        Report = Report_Button
     }
 
     return (<div className="Selected-Light">
         <div>Latitude: {light.lat}</div>
         <div>Longitude: {light.lng}</div>
         <div>Current Status: {light.status ? "Not Working" : "Working"}</div>
+        <div className="Layers">
+            {Report_1_Checkbox}
+            {Report_2_Checkbox}
+            {Report_3_Checkbox}
+            {Report_4_Textbox}
+            {Report_5_Textbox}
+        </div>
         <div className="Report-Button">
-            {Button_}
+            {Report}
         </div>
         {Toast}
     </div>)

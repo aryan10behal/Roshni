@@ -46,3 +46,7 @@ To run the frontend in production mode, use
 npm run build
 serve -s build -p 8080
 ```
+npm run build
+sudo rm -r /var/www/html/projects/roshni/*
+sudo cp build/* /var/www/html/projects/roshni/
+sudo service apache2 restart
