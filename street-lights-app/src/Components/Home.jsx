@@ -42,12 +42,12 @@ function Home({lights}) {
 
   function fetchRouteData() {
 
-  //   function positionData(position){
+    function positionData(position){
 
-  //     var latLng = new window.google.maps.LatLng({'lng':position['lng'], 'lat':position['lat']});
-  //     var positionData = {'LatLng': latLng, 'CCMS NO':position['CCMS NO'], 'Zone':position['Zone'], 'Type of Light':position['Type of Light'], 'No. Of Lights':position['No. Of Lights'], 'Ward No.':position['Ward No.'] ,'Connected Load':position['Connected Load']};
-  //     return positionData;
-  // }
+      var latLng = new window.google.maps.LatLng({'lng':position['lng'], 'lat':position['lat']});
+      var positionData = {'LatLng': latLng, 'CCMS NO':position['CCMS_no'], 'Zone':position['zone'], 'Type of Light':position['Type of Light'], 'No. Of Lights':position['No. Of Lights'], 'Ward No.':position['Ward No.'] ,'Connected Load':position['Connected Load'], 'Actual Load':position['Actual Load']};
+      return positionData;
+  }
 
     if(!src || !dest) return;
     const axios = require('axios');
@@ -55,9 +55,12 @@ function Home({lights}) {
     fetch(env.BACKEND + `/route?source=${src}&destination=${dest}&darkRouteThreshold=${100}&distanceFromPath=${distanceFromStreet}`)
     .then(response => response.json())
     .then((data) => {
-      setLoading(false);          
+      setLoading(false);  
+      console.log(data);   
+      let temp = data['route_lights'].map(position => positionData(position));     
       setRouteData({
-        routeLights: data['route_lights'].map(position => new window.google.maps.LatLng(position)),
+        
+        routeLights: temp,
         bounds: data['bounds'],
         route: data['route'].map(position => new window.google.maps.LatLng(position))
       })
@@ -103,6 +106,7 @@ function Home({lights}) {
 
   function onMarkerClick(marker, position, map) {
     let id = `${marker.position.lat()},${marker.position.lng()}`;
+    console.log(position['Actual Load']);
     const infowindow = new window.google.maps.InfoWindow({
         content: `<div>
             <div>Latitude: ${marker.position.lat()}</div>

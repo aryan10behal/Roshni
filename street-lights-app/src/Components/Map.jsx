@@ -53,7 +53,7 @@ function Map({children, className, center, zoom, clustererData, routeData, route
                 }
                 else{
                     marker = new window.google.maps.Marker({position:position['LatLng'], icon: env.BACKEND+"/icon_yellow"});
-                    console.log(marker.position.lat(), marker.position.lng())
+
                 }
 
                 marker.addListener("click", () => onMarkerClick(marker, position, map));
@@ -84,7 +84,26 @@ function Map({children, className, center, zoom, clustererData, routeData, route
             polyline: new window.google.maps.Polyline({map, path: routeData.route, strokeColor: 'DodgerBlue'}),
             A: new window.google.maps.Marker({map, position: routeData.route[0], label: 'A'}),
             B: new window.google.maps.Marker({map, position: routeData.route[routeData.route.length - 1], label: 'B'}),
-            routeLights: routeData.routeLights.map(position => new window.google.maps.Marker({map, position, icon: env.BACKEND+"/icon"}))        
+            routeLights: routeData.routeLights.map(position => {
+                var marker;
+                if(position['Connected Load']=='0' && position['Actual Load']=='0'){
+                    marker = new window.google.maps.Marker({map, position:position['LatLng'], icon: env.BACKEND+"/icon"});
+                }
+                else if(parseFloat(position['Actual Load'])/parseFloat(position['Connected Load'])<=0.25){
+                    marker = new window.google.maps.Marker({map, position:position['LatLng'], icon: env.BACKEND+"/icon_red"});
+                }
+                else if(parseFloat(position['Actual Load'])/parseFloat(position['Connected Load'])>=0.75){
+                   
+                    marker = new window.google.maps.Marker({map, position:position['LatLng'], icon: env.BACKEND+"/icon_green"});
+                }
+                else{
+                    marker = new window.google.maps.Marker({map, position:position['LatLng'], icon: env.BACKEND+"/icon_yellow"});
+                 
+                }
+
+                marker.addListener("click", () => onMarkerClick(marker, position, map));
+    
+            return marker;})        
         };
         map.fitBounds(
             new window.google.maps.LatLngBounds(
