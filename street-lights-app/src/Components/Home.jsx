@@ -168,7 +168,7 @@ function Home({lights}) {
       <Wrapper  
         className="Wrapper"
         apiKey={env.GOOGLE_MAPS_API_KEY} render={render}
-        libraries={['visualization']}
+        libraries={['visualization', 'drawing']}
       >
         <Map 
          

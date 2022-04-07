@@ -15,6 +15,8 @@ function Report({lights}) {
     const [center, setCenter] = useState({lat: 28.6,lng: 77.15});
     const [selectedLight, setSelectedLight] = useState(null);
     const [reports, setReports] = useState(null)
+    const [reportRegion, setReportRegion] = useState(true);
+    const [reportedCircle, setReportedCircle] = useState(null);
 
     useEffect(() => {
         if(reports == null) {
@@ -60,6 +62,18 @@ function Report({lights}) {
         setSelectedLight({lat: marker.position.lat(), lng: marker.position.lng(), CCMS_NO:position['CCMS NO'], Zone:position['Zone'], Type_of_light:position['Type of Light'], No_of_lights:position['No. Of Lights'], Wattage:position['Wattage'], connected_load:position['Connected Load'], actual_load:position['Actual Load'], ward_no:position['Ward No.'] });
     }
 
+
+    function selectRegion(circle) {
+        setReportedCircle(circle);
+    }
+
+    function report() {
+        console.log(`center=${reportedCircle.getCenter()}&radius=${reportedCircle.getRadius()}`)
+        fetch(`${env.BACKEND}/report_region?center=${reportedCircle.getCenter()}&radius=${reportedCircle.getRadius()}`)
+
+    }
+
+
     return (
     <div className='App-body'>
         <div className="Input">
@@ -77,13 +91,15 @@ function Report({lights}) {
                     </IconButton>
                 </div>
                 <SelectedLight light={selectedLight} reports={reports} setReports={setReports} />
-                {/* <ReportList reports={reports} /> */}
+                <div>
+                    {reportedCircle ? <Button onClick={report}>Report Region</Button> : ""}
+                </div>
             </div>
         </div>
         <Wrapper  
             className="Wrapper"
             apiKey={env.GOOGLE_MAPS_API_KEY}
-            libraries={['visualization']}
+            libraries={['visualization', 'drawing']}
         >
             <Map 
                 className="Map"
@@ -93,6 +109,9 @@ function Report({lights}) {
                 onMarkerClick={onMarkerClick}
                 showLiveData={true}
                 showOtherData={true}
+                allowReportRegion={reportRegion}
+                selectRegion={selectRegion}
+                reportCircle={reportedCircle}
             />
         </Wrapper>
     </div>
@@ -108,6 +127,7 @@ function SelectedLight({light, reports, setReports}) {
     const [report_3, setReport_3] = useState(false);
     const [report_4, setReport_4] = useState("");
     const [report_5, setReport_5] = useState("");
+
     if(light == null) {
         return "";
     }
