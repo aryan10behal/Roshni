@@ -517,12 +517,28 @@ def get_reports():
 @app.get("/report_region")
 def report_region(req: Request):
     global light_coordinates
+    global light_data
     request_args = dict(req.query_params)
     center = request_args['center']
-    center = [float(center[1:center.find(',')]),float(center[center.find(',')+4:-1])]
-    radius = float(request_args['radius'])
+    center = [float(center[1:center.find(',')]),float(center[center.find(',')+2:-1])]
+
+    # converting m distance to lat_lng equilvalent
+    radius = (9.000712452*float(request_args['radius']) + 11.43801869731)/1000000
+
+    print(center, radius)
+
+    # get these from frontend
+    phone_no = "get from frontend"
+    report_type = "get from frontend"
+
+    print("@@", light_coordinates[0])
     lights = light_coordinates[np.sqrt((light_coordinates[:, 0] - center[0]) ** 2 + (light_coordinates[:, 1] - center[1]) ** 2) < radius]
-    print(lights)
+    print(len(lights), len(light_coordinates))
+    # lights_to_be_reported = [{'lat': x[0], 'lng': x[1], 'CCMS_no':light_data[(x[1],x[0])]['CCMS_no'], 'zone':light_data[(x[1],x[0])]['zone'], 'Type of Light':light_data[(x[1],x[0])]['Type of Light'], 'No. Of Lights':light_data[(x[1],x[0])]['No. Of Lights'], 'Ward No.':light_data[(x[1],x[0])]['Ward No.'] , 'Wattage':light_data[(x[1],x[0])]['Wattage'], 'Connected Load':light_data[(x[1],x[0])]['Connected Load'], 'Actual Load':light_data[(x[1],x[0])]['Actual Load']} for x in lights]
+    for x in lights:
+        db['reports'].insert_one({'lat': x[0], 'lng': x[1], 'timestamp': str(datetime.now()),'id':str(x[0])+","+str(x[1]),'CCMS_no': light_data[(x[1],x[0])]['CCMS_no'], 'zone': light_data[(x[1],x[0])]['zone'], 'Type_of_Light': light_data[(x[1],x[0])]['Type of Light'], 'No_Of_Lights': light_data[(x[1],x[0])]['No. Of Lights'], 'Wattage': light_data[(x[1],x[0])]['Wattage'], 'Ward_No': light_data[(x[1],x[0])]['Ward No.'], 'Connected_Load': light_data[(x[1],x[0])]['Connected Load'], 'Actual_load': light_data[(x[1],x[0])]['Actual Load'], 'phone_no': phone_no, 'report_type': report_type})
+    print("reported")
+
 
 @app.get("/resolveReport")
 def resolveReport(req: Request):
@@ -574,17 +590,6 @@ def resolveReport(req: Request):
         db['resolved-reports'].insert_one({'lat': lat, 'lng': lng, 'timestamp': str(datetime.now()),'id':str(lat)+","+str(lng),'CCMS_no': resolved_light_data['CCMS_no'], 'zone': resolved_light_data['zone'], 'Type_of_Light': resolved_light_data['Type_of_Light'], 'No_Of_Lights': resolved_light_data['No_Of_Lights'], 'Wattage': resolved_light_data['Wattage'], 'Ward_No': resolved_light_data['Ward_No'], 'Connected_Load': resolved_light_data['Connected_Load'], 'Actual_load': resolved_light_data['Actual_load'], 'phone_no': resolved_light_data['phone_no'], 'report_type': resolved_light_data['report_type'], 'Comments': comment})
     
         
-    # lat = float(id[:id.find(',')])
-    # lng = float(id[id.find(',')+1:])
-    # print(lat, lng, comment)
-    # resolved_light_data = db['reports'].find_one({'lat': lat, 'lng':lng})
-    # if not resolved_light_data:
-    #     print("Light not found")
-    #     return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp'], 'id':report['id'], 'CCMS_no': report['CCMS_no'], 'zone': report['zone'], 'Type_of_Light': report['Type_of_Light'], 'No_Of_Lights': report['No_Of_Lights'], 'Wattage': report['Wattage'], 'Ward_No': report['Ward_No'], 'Connected Load': report['Connected_Load'], 'Actual Load': report['Actual_load'], 'Phone No': report['phone_no'], 'Report Type': report['report_type']}, db['reports'].find()))
-
-    # print("Light being resolved ", resolved_light_data)
-    # db['reports'].delete_one({'lat':lat, 'lng': lng})
-    # db['resolved-reports'].insert_one({'lat': lat, 'lng': lng, 'timestamp': str(datetime.now()),'id':str(lat)+","+str(lng),'CCMS_no': resolved_light_data['CCMS_no'], 'zone': resolved_light_data['zone'], 'Type_of_Light': resolved_light_data['Type_of_Light'], 'No_Of_Lights': resolved_light_data['No_Of_Lights'], 'Wattage': resolved_light_data['Wattage'], 'Ward_No': resolved_light_data['Ward_No'], 'Connected_Load': resolved_light_data['Connected_Load'], 'Actual_load': resolved_light_data['Actual_load'], 'phone_no': resolved_light_data['phone_no'], 'report_type': resolved_light_data['report_type'], 'Comments': comment})
     return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp'], 'id':report['id'], 'CCMS_no': report['CCMS_no'], 'zone': report['zone'], 'Type_of_Light': report['Type_of_Light'], 'No_Of_Lights': report['No_Of_Lights'], 'Wattage': report['Wattage'], 'Ward_No': report['Ward_No'], 'Connected Load': report['Connected_Load'], 'Actual Load': report['Actual_load'], 'Phone No': report['phone_no'], 'Report Type': report['report_type']}, db['reports'].find()))
 
 
