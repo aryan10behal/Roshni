@@ -119,7 +119,7 @@ function Admin({setLights}) {
     }
 
     const handleResolveReports=(reports_to_resolve)=>{
-        fetch(`${env.BACKEND}/resolveReport?id=${reports_to_resolve[0]}&comment=${adminComment}`)
+        fetch(`${env.BACKEND}/resolveReport?id=${reports_to_resolve}&comment=${adminComment}`)
         .then((response) => {
             if(response.status == 200) {
                 response.json().then((data) => {
