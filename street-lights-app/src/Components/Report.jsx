@@ -1,3 +1,4 @@
+
 import { Alert, Button, Checkbox, IconButton, TextField, FormControlLabel } from "@mui/material";
 import { useEffect, useState } from "react";
 import Search from "@mui/icons-material/Search";
@@ -6,13 +7,14 @@ import { Wrapper } from "@googlemaps/react-wrapper";
 import env from "react-dotenv";
 import '../App.scss';
 
+
 function Report({lights}) {    
 
     const [locality, setLocality] = useState(null);
     const [zoom, setZoom] = useState(11);
     const [center, setCenter] = useState({lat: 28.6,lng: 77.15});
     const [selectedLight, setSelectedLight] = useState(null);
-    const [reports, setReports] = useState([])
+    const [reports, setReports] = useState(null)
 
     useEffect(() => {
         if(reports == null) {
@@ -33,13 +35,21 @@ function Report({lights}) {
         });
     }
 
-    function onMarkerClick(marker, map) {
+    function onMarkerClick(marker, position, map) {
         let id = `${marker.position.lat()},${marker.position.lng()}`;
         const infowindow = new window.google.maps.InfoWindow({
             content: `<div>
-                <div>latitude: ${marker.position.lat()}</div>
-                <div>longitude: ${marker.position.lng()}</div>
-                <div>status: ${marker.status ? "Not Working" : "Working"}</div>
+            <div>Latitude: ${marker.position.lat()}</div>
+            <div>Longitude: ${marker.position.lng()}</div>
+            <div>CCMS No.: ${position['CCMS NO']}</div>
+            <div>Zone: ${position['Zone']}</div>
+            <div>Ward No.: ${position['Ward No.']}</div>
+            <div>Type of Light: ${position['Type of Light']}</div>
+            <div>No. Of Lights: ${position['No. Of Lights']}</div>
+            <div>Wattage: ${parseInt(position['Wattage'])}</div>
+            <div>Connected Load: ${position['Connected Load']!=-1?position['Connected Load']:0}</div>
+            <div>Actual Load: ${position['Actual Load']!=-1?position['Actual Load']:0}</div>
+            <div>status: ${marker.status ? "Not Working" : "Working"}</div>
             </div>`,
         });
         infowindow.open({
@@ -47,7 +57,7 @@ function Report({lights}) {
             map,
             shouldFocus: false,
         })
-        setSelectedLight({lat: marker.position.lat(), lng: marker.position.lng()});
+        setSelectedLight({lat: marker.position.lat(), lng: marker.position.lng(), CCMS_NO:position['CCMS NO'], Zone:position['Zone'], Type_of_light:position['Type of Light'], No_of_lights:position['No. Of Lights'], Wattage:position['Wattage'], connected_load:position['Connected Load'], actual_load:position['Actual Load'], ward_no:position['Ward No.'] });
     }
 
     return (
@@ -67,7 +77,7 @@ function Report({lights}) {
                     </IconButton>
                 </div>
                 <SelectedLight light={selectedLight} reports={reports} setReports={setReports} />
-                <ReportList reports={reports} />
+                {/* <ReportList reports={reports} /> */}
             </div>
         </div>
         <Wrapper  
@@ -83,7 +93,6 @@ function Report({lights}) {
                 onMarkerClick={onMarkerClick}
                 showLiveData={true}
                 showOtherData={true}
-
             />
         </Wrapper>
     </div>
@@ -124,8 +133,21 @@ function SelectedLight({light, reports, setReports}) {
             setToast(CheckFormToast);
             return;
         }
+        let report_type=""
+        if(option_1){
+            report_type+="Not Working "
+        }
+        if(option_2){
+            report_type+="Dim Light "
+        }
+        if(option_3){
+            report_type+="Pole is Tilted "
+        }
+        report_type+=option_4
+
+
         setStatus(REPORTING)
-        fetch(`${env.BACKEND}/report?lat=${light.lat}&lng=${light.lng}&option_1=${option_1}&option_2=${option_2}&option_3=${option_3}&option_4=${option_4}&option_5=${option_5}`)
+        fetch(`${env.BACKEND}/report?lat=${light.lat}&lng=${light.lng}&CCMS_no=${light.CCMS_NO}&zone=${light.Zone}&Type_of_Light=${light.Type_of_light}&No_Of_Lights=${light.No_of_lights}&Ward_No=${light.ward_no}&Wattage=${light.Wattage}&Connected_Load=${light.connected_load}&Actual_load=${light.actual_load}&phone_no=${option_5}&report_type=${report_type}`)
         .then((response) => {
             setStatus(REPORT);
             if(response.status == 200) {

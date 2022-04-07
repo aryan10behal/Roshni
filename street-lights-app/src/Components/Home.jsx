@@ -109,13 +109,13 @@ function Home({lights}) {
   function onMarkerClick(marker, position, map) {
 
     let id = `${marker.position.lat()},${marker.position.lng()}`;
-    console.log(position['Actual Load']);
     const infowindow = new window.google.maps.InfoWindow({
         content: `<div>
             <div>Latitude: ${marker.position.lat()}</div>
             <div>Longitude: ${marker.position.lng()}</div>
             <div>CCMS No.: ${position['CCMS NO']}</div>
             <div>Zone: ${position['Zone']}</div>
+            <div>Ward No.: ${position['Ward No.']}</div>
             <div>Type of Light: ${position['Type of Light']}</div>
             <div>No. Of Lights: ${position['No. Of Lights']}</div>
             <div>Wattage: ${parseInt(position['Wattage'])}</div>

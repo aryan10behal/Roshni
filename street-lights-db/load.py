@@ -7,8 +7,10 @@ db = myclient["street-lights-db"]
 streetlights = db["streetlights"]
 ccms = db["ccms"]
 reports = db["reports"]
+resolved_report = db['resolved-reports']
 streetlights.drop()
 reports.drop()
+resolved_report.drop()
 ccms.drop()
 
 for x in streetlights.find()[:10]:
@@ -55,5 +57,4 @@ print(sum([1 for x in streetlights.find()]))
 
 for x in streetlights.find()[:10]:
     print(x)
-
 

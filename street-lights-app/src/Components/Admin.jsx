@@ -1,8 +1,15 @@
+import React from "react";
 import Button from '@mui/material/Button';
 import { Checkbox, CircularProgress, FormControlLabel, Slider, TextField, Typography, IconButton, Radio, RadioGroup, Input, Label } from "@mui/material";
+import { DataGrid } from "@mui/x-data-grid";
 import { useState } from "react";
 import env from "react-dotenv";
 import '../App.scss';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 
 
 
@@ -47,6 +54,24 @@ function Admin({setLights}) {
 
     const [showReports, setShowReports] = useState(false);
     const [showResolvedReports, setShowResolvedReports] = useState(false);
+    const [reports, setReports] = useState(null);
+    const [resolvedReports, setResolvedReports] = useState(null);
+    const [showDialog, setShowDialog] = useState(false);
+    const [adminComment, setAdminComment] = useState(null);
+
+    const [selectionModel, setSelectionModel] = React.useState([]);
+
+
+    //Dialog box
+    const [open, setOpen] = React.useState(false);
+
+    const handleClickOpen = () => {
+        setOpen(true);
+    };
+
+    const handleClose = () => {
+        setOpen(false);
+    };
 
     const changeHandlerAdd = (event) => {
         setSelectedFileAdd(event.target.files[0]);
@@ -82,6 +107,86 @@ function Admin({setLights}) {
          
           
     };
+
+
+    const handleDialog=(reports_to_resolve)=>{
+        console.log(reports_to_resolve)
+        if(reports_to_resolve.length==0) return;
+        setShowDialog(true);
+        handleClickOpen();
+
+         
+    }
+
+    const handleResolveReports=(reports_to_resolve)=>{
+        fetch(`${env.BACKEND}/resolveReport?id=${reports_to_resolve[0]}&comment=${adminComment}`)
+        .then((response) => {
+            if(response.status == 200) {
+                response.json().then((data) => {
+                    setReports(data);
+                })
+            } else {
+                console.log("Unable to resolve");
+            }
+        })
+    }
+
+    
+    //Fetching reports
+    React.useEffect(()=>{
+        if(!reports){
+        fetch(`${env.BACKEND}/reports`)
+        .then((response) => response.json())
+        .then((data) => setReports(data)) ;
+      
+        }
+
+    }, [showReports])
+
+     //Fetching Resolved reports
+     React.useEffect(()=>{
+        
+        fetch(`${env.BACKEND}/getResolvedReport`)
+        .then((response) => response.json())
+        .then((data) => setResolvedReports(data)) ;
+      
+        
+
+    }, [showResolvedReports])
+
+
+
+
+    const columns = [
+        { field: 'lat', headerName: 'Latitude', width: 130 },
+        { field: 'lng', headerName: 'Longitude', width: 130 },
+        { field: 'timestamp', headerName: 'Time Stamp', width:230 },
+        { field: 'CCMS_no', headerName: 'CCMS No.', width: 230 },
+        { field: 'zone', headerName: 'Zone', width: 130 },
+        { field: 'Type_of_Light', headerName: 'Type of Light', width:130 },
+        { field: 'Wattage', headerName: 'Wattage', width: 130 },
+        { field: 'Ward_No', headerName: 'Ward No.', width: 130 },
+        { field: 'Connected Load', headerName: 'Connected Load', width:130 },
+        { field: 'Actual Load', headerName: 'Actual Load', width: 130 },
+        { field: 'Phone No', headerName: 'Phone No.', width: 130 },
+        { field: 'Report Type', headerName: 'Report Type', width:500 },
+      ];
+      const columns_resolved = [
+        { field: 'lat', headerName: 'Latitude', width: 130 },
+        { field: 'lng', headerName: 'Longitude', width: 130 },
+        { field: 'timestamp', headerName: 'Time Stamp', width:230 },
+        { field: 'CCMS_no', headerName: 'CCMS No.', width: 230 },
+        { field: 'zone', headerName: 'Zone', width: 130 },
+        { field: 'Type_of_Light', headerName: 'Type of Light', width:130 },
+        { field: 'Wattage', headerName: 'Wattage', width: 130 },
+        { field: 'Ward_No', headerName: 'Ward No.', width: 130 },
+        { field: 'Connected Load', headerName: 'Connected Load', width:130 },
+        { field: 'Actual Load', headerName: 'Actual Load', width: 130 },
+        { field: 'Phone No', headerName: 'Phone No.', width: 130 },
+        { field: 'Report Type', headerName: 'Report Type', width:130 },
+        { field: 'Comments', headerName: 'Comments', width:500 },
+      ];
+    
 
     return (
         <div className='App-body'>
@@ -163,7 +268,80 @@ function Admin({setLights}) {
                     }}>Delete Light</Button>
             </div>
         ) : ""}
+
+        {showReports?        
+       
+           (
+               
+            <div>
+            <div className="ReportsTable">
+                <DataGrid 
+                rows={reports}
+                columns={columns}
+                pageSize={10}
+                rowsPerPageOptions={[10]}
+                checkboxSelection
+                onSelectionModelChange={(newSelection) => {
+                setSelectionModel(newSelection);
+                }}
+                selectionModel={selectionModel}
+                 
+                />
+                 <Button variant="contained"  onClick={()=>{
+                      handleDialog(selectionModel);
+                    }}component="span" className = "AdminUpload" >
+                    Resolve
+                </Button>
+            </div>
+           
+            </div>
+
+            
+            
+            
+
+        ):""}
+        {showResolvedReports?(
+            <div className="ReportsTable">
+                <DataGrid 
+                rows={resolvedReports}
+                columns={columns_resolved}
+                pageSize={10}
+                rowsPerPageOptions={[10]}
+
+                 
+                />
+                
+            </div>
+            
+            
+        ):""}
         
+        {showDialog?(
+            <div>
+      <Dialog open={open} onClose={handleClose}>
+        <DialogTitle>Resolve Report</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+           Reports with the following location will get resolved:  {selectionModel.map(val=><p>{val}</p>)}
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            id="name"
+            label="Comments"
+            type="email"
+            fullWidth
+            variant="standard"
+            onChange={(e)=>setAdminComment(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={()=>{handleResolveReports(selectionModel);handleClose()}}>Resolve</Button>
+        </DialogActions>
+      </Dialog>
+    </div>):""}
 
         </div>
        
