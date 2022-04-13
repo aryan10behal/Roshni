@@ -14,7 +14,7 @@ db = myclient["street-lights-db"]
 ccms = db["ccms"]
 
 
-URL = 'http://103.42.91.251:32210/eesl/api/getBsesRecords'
+URL = ['http://103.42.91.251:32210/eesl/api/getBsesRecords', ]
 def fetch():
     data = requests.get(URL).content
     data = json.loads(data)
@@ -29,9 +29,13 @@ def insert(data):
     ccms.insert_many(data)
 
 while True:
-    data = fetch()
-    ccms.drop()
-    insert(data)
+    try:
+        data = fetch()
+        ccms.drop()
+        insert(data)
 
-    print('updated')
-    sleep(1000)
+        print('updated')
+    except Exception as exception:
+        print(exception)
+    finally:
+        sleep(1000)
