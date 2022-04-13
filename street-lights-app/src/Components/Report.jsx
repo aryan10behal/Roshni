@@ -2,10 +2,18 @@
 import { Alert, Button, Checkbox, IconButton, TextField, FormControlLabel } from "@mui/material";
 import { useEffect, useState } from "react";
 import Search from "@mui/icons-material/Search";
+import CancelIcon from '@mui/icons-material/Cancel';
 import Map from "./Map";
 import { Wrapper } from "@googlemaps/react-wrapper";
 import env from "react-dotenv";
 import '../App.scss';
+import WrongLocation from "@mui/icons-material/WrongLocation";
+import { GridCheckCircleIcon } from "@mui/x-data-grid";
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 
 
 function Report({lights}) {    
@@ -14,9 +22,13 @@ function Report({lights}) {
     const [zoom, setZoom] = useState(11);
     const [center, setCenter] = useState({lat: 28.6,lng: 77.15});
     const [selectedLight, setSelectedLight] = useState(null);
-    const [reports, setReports] = useState(null)
-    const [reportRegion, setReportRegion] = useState(true);
+    const [reports, setReports] = useState([])
+    const [reportRegion, setReportRegion] = useState(false);
     const [reportedCircle, setReportedCircle] = useState(null);
+
+
+    const [open, setOpen] = useState(false);
+    const [toast, setToast] = useState("");
 
     useEffect(() => {
         if(reports == null) {
@@ -67,15 +79,17 @@ function Report({lights}) {
         setReportedCircle(circle);
     }
 
-    function report() {
-        console.log(`center=${reportedCircle.getCenter()}&radius=${reportedCircle.getRadius()}`)
-        fetch(`${env.BACKEND}/report_region?center=${reportedCircle.getCenter()}&radius=${reportedCircle.getRadius()}`)
-
+    function report(issue, contact) {
+        let request = `${env.BACKEND}/report_region?center=${reportedCircle.getCenter()}&radius=${reportedCircle.getRadius()}&phone_no=${contact}&report_type=${issue}`;
+        console.log(request)
+        fetch(request).then(() => {
+            setReportRegion(false);
+        })
     }
-
 
     return (
     <div className='App-body'>
+
         <div className="Input">
             <div className="Layers">
                 <div className="Input-Field">
@@ -90,11 +104,16 @@ function Report({lights}) {
                         <Search />
                     </IconButton>
                 </div>
-                <SelectedLight light={selectedLight} reports={reports} setReports={setReports} />
                 <div>
-                    {reportedCircle ? <Button onClick={report}>Report Region</Button> : ""}
+                    {!reportRegion ?  <Button style={{marginRight:'4px'}} variant="outlined" onClick={() => setReportRegion(true)}> <WrongLocation /> Report Region</Button> : ""}
+                    {reportRegion ? <Button style={{marginRight:'4px'}} variant="outlined" color="success" disabled={!reportedCircle} onClick={() => setOpen(true)}> <GridCheckCircleIcon /> </Button> : ""}
+                    {reportRegion ? <Button style={{marginRight:'4px'}} variant="outlined" color="error" onClick={() => {setReportRegion(false);setReportedCircle(null)}}> <CancelIcon /> </Button> : ""}
                 </div>
+                <SelectedLight light={selectedLight} reports={reports} setReports={setReports} />
+
+                {open ? <ReportForm report={report} open={open} setOpen={setOpen} setToast={toast} /> : ""}
             </div>
+            {toast}
         </div>
         <Wrapper  
             className="Wrapper"
@@ -121,12 +140,8 @@ function Report({lights}) {
 
 function SelectedLight({light, reports, setReports}) {
     const [status, setStatus] = useState(false);
-    const [Toast, setToast] = useState("");
-    const [report_1, setReport_1] = useState(false);
-    const [report_2, setReport_2] = useState(false);
-    const [report_3, setReport_3] = useState(false);
-    const [report_4, setReport_4] = useState("");
-    const [report_5, setReport_5] = useState("");
+    const [toast, setToast] = useState("");
+    const [open, setOpen] = useState(false);
 
     if(light == null) {
         return "";
@@ -134,13 +149,7 @@ function SelectedLight({light, reports, setReports}) {
     const REPORT = false;
     const REPORTING = true;
 
-    let Report_1_Checkbox = (<FormControlLabel control={<Checkbox variant="standard" onChange={(e) => setReport_1(e.target.value)}/>} label="Report: not working" />)
-    let Report_2_Checkbox = (<FormControlLabel control={<Checkbox variant="standard" onClick={(e) => setReport_2(e.target.value)} />} label="Report: dim" />)
-    let Report_3_Checkbox = (<FormControlLabel control={<Checkbox variant="standard" onClick={(e) => setReport_3(e.target.value)} />} label="Report: Pole is tilted" />)
-    let Report_4_Textbox = (<TextField variant="standard" label="Other" onChange={(e) => setReport_4(e.target.value)} type = "text" />)
-    let Report_5_Textbox = (<TextField variant="standard" label="Contact Number" onChange={(e) => setReport_5(e.target.value)} type = "text" />)
-
-    let Report_Button = (<Button onClick={() => reportLight(report_1, report_2, report_3, report_4, report_5)}>Report Light</Button>)
+    let Report_Button = (<Button onClick={() => setOpen(true)}> <WrongLocation />  Report Light</Button>)
     let Reporting_Button = (<Button disabled={true}>Reporting Light</Button>)
     let ReportedButton = (<Button disabled={true}>Reported</Button>)
     
@@ -148,26 +157,11 @@ function SelectedLight({light, reports, setReports}) {
     let CheckFormToast = (<Alert severity="error">Please choose the problem or specify in other</Alert>)
     let SuccessToast = (<Alert severity="success">Thank you for reporting!</Alert>)
 
-    function reportLight(option_1, option_2, option_3, option_4, option_5) {
-        if(!option_1 && !option_2 && !option_3 && option_4 == "") {
-            setToast(CheckFormToast);
-            return;
-        }
-        let report_type=""
-        if(option_1){
-            report_type+="Not Working "
-        }
-        if(option_2){
-            report_type+="Dim Light "
-        }
-        if(option_3){
-            report_type+="Pole is Tilted "
-        }
-        report_type+=option_4
-
-
+    function reportLight(issue, contact) {
         setStatus(REPORTING)
-        fetch(`${env.BACKEND}/report?lat=${light.lat}&lng=${light.lng}&CCMS_no=${light.CCMS_NO}&zone=${light.Zone}&Type_of_Light=${light.Type_of_light}&No_Of_Lights=${light.No_of_lights}&Ward_No=${light.ward_no}&Wattage=${light.Wattage}&Connected_Load=${light.connected_load}&Actual_load=${light.actual_load}&phone_no=${option_5}&report_type=${report_type}`)
+        let request = `${env.BACKEND}/report?lat=${light.lat}&lng=${light.lng}&CCMS_no=${light.CCMS_NO}&zone=${light.Zone}&Type_of_Light=${light.Type_of_light}&No_Of_Lights=${light.No_of_lights}&Ward_No=${light.ward_no}&Wattage=${light.Wattage}&Connected_Load=${light.connected_load}&Actual_load=${light.actual_load}&phone_no=${contact}&report_type=${issue}`
+        console.log(request)
+        fetch(request)
         .then((response) => {
             setStatus(REPORT);
             if(response.status == 200) {
@@ -197,17 +191,11 @@ function SelectedLight({light, reports, setReports}) {
         <div>Latitude: {light.lat}</div>
         <div>Longitude: {light.lng}</div>
         <div>Current Status: {light.status ? "Not Working" : "Working"}</div>
-        <div className="Layers">
-            {Report_1_Checkbox}
-            {Report_2_Checkbox}
-            {Report_3_Checkbox}
-            {Report_4_Textbox}
-            {Report_5_Textbox}
-        </div>
         <div className="Report-Button">
             {Report}
         </div>
-        {Toast}
+        {open ? <ReportForm report={reportLight}  open={open} setOpen={setOpen} setToast={setToast} /> : ""}
+        {toast}
     </div>)
 }
 
@@ -216,6 +204,68 @@ function ReportList({reports}) {
     return <div>
         {reports?.map((report) => <div>{report.lat} {report.lng} {Date(report.datetime)}</div>)}
     </div>
+}
+
+function ReportForm({report, open, setOpen, setToast}) {
+    const [report_1, setReport_1] = useState(false);
+    const [report_2, setReport_2] = useState(false);
+    const [report_3, setReport_3] = useState(false);
+    const [report_4, setReport_4] = useState("");
+    const [report_5, setReport_5] = useState("");
+
+    let Report_1_Checkbox = (<FormControlLabel control={<Checkbox variant="standard" onChange={(e) => setReport_1(e.target.value)}/>} label="Report: not working" />)
+    let Report_2_Checkbox = (<FormControlLabel control={<Checkbox variant="standard" onClick={(e) => setReport_2(e.target.value)} />} label="Report: dim" />)
+    let Report_3_Checkbox = (<FormControlLabel control={<Checkbox variant="standard" onClick={(e) => setReport_3(e.target.value)} />} label="Report: Pole is tilted" />)
+    let Report_4_Textbox = (<TextField variant="standard" label="Other" onChange={(e) => setReport_4(e.target.value)} type = "text" />)
+    let Report_5_Textbox = (<TextField variant="standard" label="Contact Number" onChange={(e) => setReport_5(e.target.value)} type = "text" />)
+
+    let CheckFormToast = (<Alert severity="error">Please choose the problem or specify in other</Alert>)
+
+    function getIssueAndContact() {
+        console.log(report_1, report_2, report_3, report_4)
+        if(!report_1 && !report_2 && !report_3 && report_4 == "") {
+            setToast(CheckFormToast);
+            return;
+        }
+        let report_type=""
+        if(report_1){
+            report_type+="Not Working "
+        }
+        if(report_2){
+            report_type+="Dim Light "
+        }
+        if(report_3){
+            report_type+="Pole is Tilted "
+        }
+        report_type+=report_4
+
+        console.log(report_type, report_5)
+
+        return {issue: report_type, contact: report_5}
+    }
+
+    return (
+    <Dialog open={open} onClose={() => setOpen(false)}>
+        <DialogTitle>Report</DialogTitle>
+        <DialogContent>
+            <DialogContentText>
+                Please select one of the following issues in this region:
+                <DialogActions className="Input">
+                <div className="Layers">
+                    {Report_1_Checkbox}
+                    {Report_2_Checkbox}
+                    {Report_3_Checkbox}
+                    {Report_4_Textbox}
+                    {Report_5_Textbox}
+                </div>
+                </DialogActions>
+            </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+            <Button onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={()=>{let issueAndContact = getIssueAndContact();report(issueAndContact['issue'], issueAndContact['contact']);setOpen(false)}}>Report</Button>
+        </DialogActions>
+    </Dialog>)
 }
 
 

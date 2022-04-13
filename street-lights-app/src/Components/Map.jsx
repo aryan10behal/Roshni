@@ -52,9 +52,7 @@ function Map({
     if(map) {
       if(allowReportRegion) {
         reportDrawingManager.current = new window.google.maps.drawing.DrawingManager({
-          drawingModes: [
-            window.google.maps.drawing.OverlayType.CIRCLE
-          ],
+          drawingMode: window.google.maps.drawing.OverlayType.CIRCLE,
           circleOptions: {
             fillColor: "#ff0000",
             fillOpacity: 0.2,
@@ -63,6 +61,7 @@ function Map({
             editable: true,
             zIndex: 1,
           },
+          drawingControl: false
         });
         reportDrawingManager.current.setMap(map);
 
@@ -74,6 +73,9 @@ function Map({
           selectRegion(circle)
         });
         
+      } else {
+        reportDrawingManager.current?.setMap(null);
+        selectedRegion.current?.setMap(null);
       }
     }
   }, [map, allowReportRegion])
@@ -291,7 +293,7 @@ function Map({
         darkSpot.setMap(null);
       });
     }
-    if (!darkroutes) {
+    if (!darkroutes || !darkroutes.length) {
       return;
     }
     var darkRoutesFinal = [];
@@ -350,6 +352,24 @@ function Map({
       darkPlot.current.darkSpots.push(marker1);
       darkPlot.current.darkSpots.push(marker2);
     }
+
+    darkPlot.current.darkSpots[0].setMap(null);
+    darkPlot.current.darkSpots[darkPlot.current.darkSpots.length - 1].setMap(null);
+
+    darkPlot.current.darkSpots = darkPlot.current.darkSpots.slice(1, darkPlot.current.darkSpots.length - 1);
+
+    const marker1 = new window.google.maps.Marker({
+      position: darkroutes[0][0],
+      map,
+    });
+    const marker2 = new window.google.maps.Marker({
+      position: darkroutes[darkroutes.length - 1][darkroutes[darkroutes.length - 1].length - 1],
+      map,
+    });
+
+    darkPlot.current.darkSpots.push(marker1);
+    darkPlot.current.darkSpots.push(marker2);
+
   }, [map, darkroutes]);
 
   return (

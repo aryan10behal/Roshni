@@ -174,7 +174,8 @@ function Admin({setLights}) {
       const columns_resolved = [
         { field: 'lat', headerName: 'Latitude', width: 130 },
         { field: 'lng', headerName: 'Longitude', width: 130 },
-        { field: 'timestamp', headerName: 'Time Stamp', width:230 },
+        { field: 'reported_timestamp', headerName: 'Reported Time Stamp', width:230 },
+        { field: 'resolved_timestamp', headerName: 'Resolved Time Stamp', width:230 },
         { field: 'CCMS_no', headerName: 'CCMS No.', width: 230 },
         { field: 'zone', headerName: 'Zone', width: 130 },
         { field: 'Type_of_Light', headerName: 'Type of Light', width:130 },
