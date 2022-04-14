@@ -17,8 +17,7 @@ for x in streetlights.find()[:10]:
     print(x)
 print(sum([1 for x in streetlights.find()]))
 
-files = ['./data/Najafgarh-1.csv', './data/Najafgarh-2.csv', './data/South-1.csv', './data/South-2.csv', './data/West-1.csv', './data/West-2.csv', './data/West-3.csv', './data/West-4.csv','./data/Central-1.csv', './data/Central-2.csv', './data_new/Najafgarh-1.csv', './data_new/Najafgarh-2.csv', './data_new/South-1.csv', './data_new/South-2.csv', './data_new/West-1.csv', './data_new/West-2.csv', './data_new/West-3.csv', './data_new/West-4.csv','./data_new/Central-1.csv', './data_new/Central-2.csv', './data_new/West-12.csv','./data_new/West-22.csv', './data/Added Lights.csv', './data_final/Final Merged Data Zone wise-South.csv'] 
-
+files = ['./data/Najafgarh-1.csv', './data/Najafgarh-2.csv', './data/South-1.csv', './data/South-2.csv', './data/West-1.csv', './data/West-2.csv', './data/West-3.csv', './data/West-4.csv','./data/Central-1.csv', './data/Central-2.csv', './data_new/Najafgarh-1.csv', './data_new/Najafgarh-2.csv', './data_new/South-1.csv', './data_new/South-2.csv', './data_new/West-1.csv', './data_new/West-2.csv', './data_new/West-3.csv', './data_new/West-4.csv','./data_new/Central-1.csv', './data_new/Central-2.csv', './data_new/West-12.csv','./data_new/West-22.csv', './data/Added Lights.csv', './data_final/Final Merged Data Zone wise-South.csv','./data_final/Final Merged Data Zone wise-West.csv', './data_final/Final Merged Data Zone wise-Najafgarh.csv'] 
 lampposts = []
 streetlights_dfs = []
 
