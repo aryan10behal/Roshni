@@ -145,6 +145,7 @@ function Admin({setLights}) {
         fetch(`${env.BACKEND}/reports`)
         .then((response) => response.json())
         .then((data) => setReports(data)) ;
+        console.log("hi");
       
         }
 
