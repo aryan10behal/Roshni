@@ -10,11 +10,15 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
-
-
+import { Wrapper } from "@googlemaps/react-wrapper";
+import Map from "./Map";
 
 
 function Admin({setLights}) {    
+
+    const [zoom, setZoom] = useState(11);
+    const [center, setCenter] = useState({lat: 28.6,lng: 77.15});
+
     const axios = require('axios');
 
     function addLight(){
@@ -54,12 +58,15 @@ function Admin({setLights}) {
 
     const [showReports, setShowReports] = useState(false);
     const [showResolvedReports, setShowResolvedReports] = useState(false);
+    const [showMap, setShowMap] = useState(false);
     const [reports, setReports] = useState(null);
     const [resolvedReports, setResolvedReports] = useState(null);
     const [showDialog, setShowDialog] = useState(false);
     const [adminComment, setAdminComment] = useState(null);
 
     const [selectionModel, setSelectionModel] = React.useState([]);
+
+    const [selectedLight, setSelectedLight] = useState(null);
 
 
     //Dialog box
@@ -156,6 +163,32 @@ function Admin({setLights}) {
 
 
 
+    function onMarkerClick(marker, position, map) {
+        let id = `${marker.position.lat()},${marker.position.lng()}`;
+        const infowindow = new window.google.maps.InfoWindow({
+            content: `<div>
+            <div>Latitude: ${marker.position.lat()}</div>
+            <div>Longitude: ${marker.position.lng()}</div>
+            <div>CCMS No.: ${position['CCMS NO']}</div>
+            <div>Zone: ${position['Zone']}</div>
+            <div>Ward No.: ${position['Ward No.']}</div>
+            <div>Type of Light: ${position['Type of Light']}</div>
+            <div>No. Of Lights: ${position['No. Of Lights']}</div>
+            <div>Wattage: ${parseInt(position['Wattage'])}</div>
+            <div>Connected Load: ${position['Connected Load']!=-1?position['Connected Load']:0}</div>
+            <div>Actual Load: ${position['Actual Load']!=-1?position['Actual Load']:0}</div>
+            <div>status: ${marker.status ? "Not Working" : "Working"}</div>
+            </div>`,
+        });
+        infowindow.open({
+            anchor: marker,
+            map,
+            shouldFocus: false,
+        })
+        // setSelectedLight({lat: marker.position.lat(), lng: marker.position.lng(), CCMS_NO:position['CCMS NO'], Zone:position['Zone'], Type_of_light:position['Type of Light'], No_of_lights:position['No. Of Lights'], Wattage:position['Wattage'], connected_load:position['Connected Load'], actual_load:position['Actual Load'], ward_no:position['Ward No.'] });
+    }
+
+
 
     const columns = [
         { field: 'lat', headerName: 'Latitude', width: 130 },
@@ -188,6 +221,12 @@ function Admin({setLights}) {
         { field: 'Comments', headerName: 'Comments', width:500 },
       ];
     
+    function positionData(position){
+
+        var latLng = new window.google.maps.LatLng({'lng':position['lng'], 'lat':position['lat']});
+        var positionData = {'LatLng': latLng, 'CCMS NO':position['CCMS_no'], 'Zone':position['zone'], 'Type of Light':position['Type_of_Light'], 'No. Of Lights':position['No_Of_Lights'], 'Ward No.':position['Ward_No'] , 'Wattage':position['Wattage'], 'Connected Load':position['Connected Load'], 'Actual Load':position['Actual Load']};
+        return positionData;
+    }
 
     return (
         <div className='App-body'>
@@ -197,10 +236,11 @@ function Admin({setLights}) {
                 aria-labelledby="demo-radio-buttons-group-label"
                
                 name="radio-buttons-group">
-                <FormControlLabel value = "addStreetLight" control={<Radio  /> } onChange={(e) => {setAddStreetLight(e.target.checked); setDeleteStreetLight(!e.target.checked); setShowReports(!e.target.checked); setShowResolvedReports(!e.target.checked)}} label="Add streetlight" />
-                <FormControlLabel value = "deleteStreetLight" control={<Radio  />} onChange={(e) => {setDeleteStreetLight(e.target.checked); setAddStreetLight(!e.target.checked); setShowReports(!e.target.checked); setShowResolvedReports(!e.target.checked)}}  label="Delete streetlight" />
-                <FormControlLabel value = "showReports" control={<Radio  />} onChange={(e) => {setShowReports(e.target.checked); setAddStreetLight(!e.target.checked); setDeleteStreetLight(!e.target.checked); setShowResolvedReports(!e.target.checked)}}  label="Show Reports" />
-                <FormControlLabel value = "showResolvedReports" control={<Radio  />} onChange={(e) => {setShowResolvedReports(e.target.checked); setAddStreetLight(!e.target.checked); setDeleteStreetLight(!e.target.checked); setShowReports(!e.target.checked)}}  label="Show Resolved Reports" />
+                <FormControlLabel value = "addStreetLight" control={<Radio  /> } onChange={(e) => {setAddStreetLight(true); setDeleteStreetLight(false); setShowReports(false); setShowResolvedReports(false); setShowMap(false)}} label="Add streetlight" />
+                <FormControlLabel value = "deleteStreetLight" control={<Radio  />} onChange={(e) => {setDeleteStreetLight(true); setAddStreetLight(false); setShowReports(false); setShowResolvedReports(false); setShowMap(false)}}  label="Delete streetlight" />
+                <FormControlLabel value = "showReports" control={<Radio  />} onChange={(e) => {setShowReports(true); setAddStreetLight(false); setDeleteStreetLight(false); setShowResolvedReports(false); setShowMap(false)}}  label="Show Reports" />
+                <FormControlLabel value = "showResolvedReports" control={<Radio  />} onChange={(e) => {setShowResolvedReports(true); setAddStreetLight(false); setDeleteStreetLight(false); setShowReports(false); setShowMap(false)}}  label="Show Resolved Reports" />
+                <FormControlLabel value = "showMap" control={<Radio  />} onChange={(e) => {setShowMap(true); setShowResolvedReports(false); setAddStreetLight(false); setDeleteStreetLight(false); setShowReports(false);}}  label="Reported Lights on Map" />
             </RadioGroup>
                 
     
@@ -271,37 +311,29 @@ function Admin({setLights}) {
         ) : ""}
 
         {showReports?        
-       
-           (
-               
-            <div>
-            <div className="ReportsTable">
-                <DataGrid 
-                rows={reports}
-                columns={columns}
-                pageSize={10}
-                rowsPerPageOptions={[10]}
-                checkboxSelection
-                onSelectionModelChange={(newSelection) => {
-                setSelectionModel(newSelection);
-                }}
-                selectionModel={selectionModel}
-                 
-                />
-                 <Button variant="contained"  onClick={()=>{
-                      handleDialog(selectionModel);
-                    }}component="span" className = "AdminUpload" >
-                    Resolve
-                </Button>
-            </div>
-           
-            </div>
-
-            
-            
-            
-
+           (<div>
+                <div className="ReportsTable">
+                    <DataGrid 
+                    rows={reports}
+                    columns={columns}
+                    pageSize={10}
+                    rowsPerPageOptions={[10]}
+                    checkboxSelection
+                    onSelectionModelChange={(newSelection) => {
+                    setSelectionModel(newSelection);
+                    }}
+                    selectionModel={selectionModel}
+                    
+                    />
+                    <Button variant="contained"  onClick={()=>{
+                        handleDialog(selectionModel);
+                        }}component="span" className = "AdminUpload" >
+                        Resolve
+                    </Button>
+                </div>
+            </div>   
         ):""}
+
         {showResolvedReports?(
             <div className="ReportsTable">
                 <DataGrid 
@@ -309,14 +341,27 @@ function Admin({setLights}) {
                 columns={columns_resolved}
                 pageSize={10}
                 rowsPerPageOptions={[10]}
-
-                 
                 />
-                
             </div>
-            
-            
         ):""}
+
+        {showMap ? (
+        <Wrapper  
+            className="Wrapper"
+            apiKey={env.GOOGLE_MAPS_API_KEY}
+            libraries={['visualization', 'drawing']}
+        >
+            <Map 
+                className="Map"
+                center={center}
+                zoom={zoom}
+                clustererData={reports.map(position=>positionData(position))}
+                showLiveData={true}
+                showOtherData={true}
+                onMarkerClick={onMarkerClick}
+            />
+        </Wrapper>
+    ) : ""}
         
         {showDialog?(
             <div>
