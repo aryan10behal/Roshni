@@ -14,12 +14,15 @@ db = myclient["street-lights-db"]
 ccms = db["ccms"]
 
 
-URL = ['http://103.42.91.251:32210/eesl/api/getBsesRecords', ]
+# Add all APIs for live data here
+URLs = ['http://103.42.91.251:32210/eesl/api/getBsesRecords', 'http://103.42.91.252:108/eesl/api/getBsesRecords']
 def fetch():
-    data = requests.get(URL).content
-    data = json.loads(data)
-    data = data['data']
-    return data
+    all_data = []
+    for url in URLs:
+        data = requests.get(url).content
+        data = json.loads(data)
+        all_data.extend(data['data'])
+    return all_data
 
 def insert(data):
     for i in range(len(data)):
