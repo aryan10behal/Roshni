@@ -1,5 +1,6 @@
 import pandas
 import pymongo
+import numpy as np
 
 myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 
@@ -17,20 +18,29 @@ for x in streetlights.find()[:10]:
     print(x)
 print(sum([1 for x in streetlights.find()]))
 
-files = ['./data/Najafgarh-1.csv', './data/Najafgarh-2.csv', './data/South-1.csv', './data/South-2.csv', './data/West-1.csv', './data/West-2.csv', './data/West-3.csv', './data/West-4.csv','./data/Central-1.csv', './data/Central-2.csv', './data_new/Najafgarh-1.csv', './data_new/Najafgarh-2.csv', './data_new/South-1.csv', './data_new/South-2.csv', './data_new/West-1.csv', './data_new/West-2.csv', './data_new/West-3.csv', './data_new/West-4.csv','./data_new/Central-1.csv', './data_new/Central-2.csv', './data_new/West-12.csv','./data_new/West-22.csv', './data/Added Lights.csv', './data_final/Final Merged Data Zone wise-South.csv','./data_final/Final Merged Data Zone wise-West.csv', './data_final/Final Merged Data Zone wise-Najafgarh.csv'] 
+csv_files = ['./data/Najafgarh-1.csv', './data/Najafgarh-2.csv', './data/South-1.csv', './data/South-2.csv', './data/West-1.csv', './data/West-2.csv', './data/West-3.csv', './data/West-4.csv','./data/Central-1.csv', './data/Central-2.csv', './data_new/Najafgarh-1.csv', './data_new/Najafgarh-2.csv', './data_new/South-1.csv', './data_new/South-2.csv', './data_new/West-1.csv', './data_new/West-2.csv', './data_new/West-3.csv', './data_new/West-4.csv','./data_new/Central-1.csv', './data_new/Central-2.csv', './data_new/West-12.csv','./data_new/West-22.csv', './data/Added Lights.csv'] 
+excel_files = ['./data_final/Final_Merged_Data_Zone_wise_Najafgarh.xlsx', './data_final/Final_Merged_Data_Zone_wise_South.xlsx', './data_final/Final_Merged_Data_Zone_wise_West.xlsx']
+
 lampposts = []
 streetlights_dfs = []
 
 deletedLights = pandas.read_csv('./data/Deleted Lights.csv')
 
 
-for file in files:
+for file in csv_files:
     streetlights_dfs.append(pandas.read_csv(file))
+
+for file in excel_files:
+    dfs = pandas.read_excel(file, sheet_name = None) # read all sheets
+    for sheet in dfs.keys():
+        streetlights_dfs.append(dfs[sheet])
+
 
 df_final = pandas.concat(streetlights_dfs)
 df_final_latlng = df_final[['Longitude', 'Latitude', 'CCMS NO', 'Zone', 'Type of Light', 'No. Of Lights', 'Ward No.' , 'Wattage.1', 'Connected Load']]
 df_final_latlng = df_final_latlng.drop_duplicates(subset=['Longitude', 'Latitude'], keep= 'last')
 df_final_latlng = df_final_latlng.dropna(subset=['Longitude', 'Latitude'])
+
 
 df_final_latlng = pandas.concat([df_final_latlng, deletedLights, deletedLights]).drop_duplicates(keep=False)
 df_final_latlng = df_final_latlng.dropna(subset=['Longitude', 'Latitude'])
