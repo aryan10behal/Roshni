@@ -38,7 +38,12 @@ uvicorn main:app --reload --host 0.0.0.0
 ```
 Start the backend in production mode using
 ```
-gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind=0.0.0.0
+gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind=0.0.0.0 
+```
+
+Current mode of Starting the backend in production mode using
+```
+sudo gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind=:8000 --certfile=/etc/letsencrypt/live/chcc.iiitd.ac.in/fullchain.pem --keyfile=/etc/letsencrypt/live/chcc.iiitd.ac.in/privkey.pem
 ```
 
 ## Frontend

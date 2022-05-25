@@ -14,13 +14,14 @@ function Input({setShowAllStreetlights, showAllStreetLights, setShowLiveData, sh
     MIN_THRESH_ROUTE,
     MAX_THRESH_ROUTE}){
     
+   
 
     return (
         <div className="Input">
             <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>Layers</Typography>
             <div className="Layers">
                 <FormControlLabel control={<Checkbox onChange={(e) => setShowHeatmap(e.target.checked)} />} label="Heatmap" />
-                <FormControlLabel control={<Checkbox onChange={(e) => setShowAllStreetlights(e.target.checked)} />} label="All Street Lights" />
+                <FormControlLabel control={<Checkbox onChange={(e) => {setShowAllStreetlights(e.target.checked); if(!e.target.checked){setShowLiveData(false); setShowOtherData(false)} }} />} label="All Street Lights" />
                 {showAllStreetLights? (
                     <div className="InputOp">
                     <FormControlLabel control={<Checkbox onChange={(e) => setShowLiveData(e.target.checked)} />} label="Live Data" />

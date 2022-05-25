@@ -172,14 +172,17 @@ function Admin({setLights}) {
             <div>Latitude: ${marker.position.lat()}</div>
             <div>Longitude: ${marker.position.lng()}</div>
             <div>CCMS No.: ${position['CCMS NO']}</div>
-            <div>Zone: ${position['Zone']}</div>
-            <div>Ward No.: ${position['Ward No.']}</div>
             <div>Type of Light: ${position['Type of Light']}</div>
             <div>No. Of Lights: ${position['No. Of Lights']}</div>
             <div>Wattage: ${parseInt(position['Wattage'])}</div>
             <div>Connected Load: ${position['Connected Load']!=-1?position['Connected Load']:0}</div>
             <div>Actual Load: ${position['Actual Load']!=-1?position['Actual Load']:0}</div>
-            <div>status: ${marker.status ? "Not Working" : "Working"}</div>
+            <div>Unique Pole No.: ${position['Unique Pole No.']}</div>
+            <div>Agency: ${position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(0,2):''}</div>
+            <div>Zone: ${position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(2,4):position['Zone']}</div>
+            <div>Ward No.: ${position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(4,7):position['Ward No.']}</div>
+            <div>Unique No.: ${position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(7,):""}</div>
+
             </div>`,
         });
         infowindow.open({
@@ -195,38 +198,46 @@ function Admin({setLights}) {
     const columns = [
         { field: 'lat', headerName: 'Latitude', width: 130 },
         { field: 'lng', headerName: 'Longitude', width: 130 },
-        { field: 'timestamp', headerName: 'Time Stamp', width:230 },
+        { field: 'timestamp', headerName: 'Time Stamp', width:260 },
         { field: 'CCMS_no', headerName: 'CCMS No.', width: 230 },
+        { field: 'unique_pole_no', headerName: 'Unique Pole No.', width: 130 },
+        { field: 'agency', headerName: 'Agency', width: 130 },
         { field: 'zone', headerName: 'Zone', width: 130 },
+        { field: 'Ward_No', headerName: 'Ward No.', width: 130 },
+        { field: 'unique_no', headerName: 'Unique No.', width: 130 },
         { field: 'Type_of_Light', headerName: 'Type of Light', width:130 },
         { field: 'Wattage', headerName: 'Wattage', width: 130 },
-        { field: 'Ward_No', headerName: 'Ward No.', width: 130 },
         { field: 'Connected Load', headerName: 'Connected Load', width:130 },
         { field: 'Actual Load', headerName: 'Actual Load', width: 130 },
         { field: 'Phone No', headerName: 'Phone No.', width: 130 },
         { field: 'Report Type', headerName: 'Report Type', width:500 },
+        
+        
       ];
       const columns_resolved = [
         { field: 'lat', headerName: 'Latitude', width: 130 },
         { field: 'lng', headerName: 'Longitude', width: 130 },
-        { field: 'reported_timestamp', headerName: 'Reported Time Stamp', width:230 },
-        { field: 'resolved_timestamp', headerName: 'Resolved Time Stamp', width:230 },
+        { field: 'timestamp', headerName: 'Time Stamp', width:260 },
         { field: 'CCMS_no', headerName: 'CCMS No.', width: 230 },
+        { field: 'unique_pole_no', headerName: 'Unique Pole No.', width: 130 },
+        { field: 'agency', headerName: 'Agency', width: 130 },
         { field: 'zone', headerName: 'Zone', width: 130 },
+        { field: 'Ward_No', headerName: 'Ward No.', width: 130 },
+        { field: 'unique_no', headerName: 'Unique No.', width: 130 },
         { field: 'Type_of_Light', headerName: 'Type of Light', width:130 },
         { field: 'Wattage', headerName: 'Wattage', width: 130 },
-        { field: 'Ward_No', headerName: 'Ward No.', width: 130 },
         { field: 'Connected Load', headerName: 'Connected Load', width:130 },
         { field: 'Actual Load', headerName: 'Actual Load', width: 130 },
         { field: 'Phone No', headerName: 'Phone No.', width: 130 },
-        { field: 'Report Type', headerName: 'Report Type', width:130 },
+        { field: 'resolved_timestamp', headerName: 'Resolved Timestamp', width: 260 },
+        { field: 'Report Type', headerName: 'Report Type', width:500 },
         { field: 'Comments', headerName: 'Comments', width:500 },
       ];
     
     function positionData(position){
 
         var latLng = new window.google.maps.LatLng({'lng':position['lng'], 'lat':position['lat']});
-        var positionData = {'LatLng': latLng, 'CCMS NO':position['CCMS_no'], 'Zone':position['zone'], 'Type of Light':position['Type_of_Light'], 'No. Of Lights':position['No_Of_Lights'], 'Ward No.':position['Ward_No'] , 'Wattage':position['Wattage'], 'Connected Load':position['Connected Load'], 'Actual Load':position['Actual Load']};
+        var positionData = {'LatLng': latLng, 'CCMS NO':position['CCMS_no'], 'Zone':position['zone'], 'Type of Light':position['Type_of_Light'], 'No. Of Lights':position['No_Of_Lights'], 'Ward No.':position['Ward_No'] , 'Wattage':position['Wattage'], 'Connected Load':position['Connected Load'], 'Actual Load':position['Actual Load'], 'Unique Pole No.':position['unique_pole_no']};
         return positionData;
     }
 
@@ -371,7 +382,7 @@ function Admin({setLights}) {
         <DialogTitle>Resolve Report</DialogTitle>
         <DialogContent>
           <DialogContentText>
-           Reports with the following location will get resolved:  {selectionModel.map(val=><p>{val}</p>)}
+           Reports with the following location and time will get resolved:  {selectionModel.map(val=><p>{val.split(" ")[0]+', '+val.split(" ")[1]}</p>)}
           </DialogContentText>
           <TextField
             autoFocus

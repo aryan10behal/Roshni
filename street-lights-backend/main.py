@@ -239,11 +239,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load']} for streetlight in db["streetlights"].find() if streetlight['lng'] and streetlight['lat']]
+all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['Unique Pole No.']} for streetlight in db["streetlights"].find() if streetlight['lng'] and streetlight['lat']]
 IST = pytz.timezone('Asia/Kolkata')
 
 light_coordinates = np.array([[streetlight['lat'], streetlight['lng']] for streetlight in all_lights])
-light_data = {(streetlight['lng'], streetlight['lat']):{'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] , 'Wattage':streetlight['Wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load']} for streetlight in all_lights}
+light_data = {(streetlight['lng'], streetlight['lat']):{'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] , 'Wattage':streetlight['Wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['Unique Pole No.']} for streetlight in all_lights}
+
+
 
 @app.post("/api/users")
 async def create_user(user: _schemas.UserCreate, db: _orm.Session = Depends(_services.get_db)):
@@ -326,23 +328,48 @@ async def update_lead(
 async def root():
     return {"message": "Awesome Leads Manager"}
 
-
+@app.get("/total_no_of_streetlights")
+def get_total_streetlights(req: Request):
+    request_args = dict(req.query_params)
+    if 'live' in request_args and request_args['live']:
+        return len([light for light in all_lights if light['Unique Pole No.'] != ''])
+    else:
+        return len(all_lights)
 
 @app.get("/streetlights")
-def read_item():
-    ccms_arr=[{'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']]
+def get_streetlights(req: Request):
+    request_args = dict(req.query_params)
+    if 'live' in request_args:
+        only_live = int(request_args['live'])
+    else:
+        only_live = False
+    begin_index = 0
+    end_index = len(all_lights)
+    if 'page_no' in request_args:
+        page_no = int(request_args['page_no'])
+        page_size = 10000
+        if 'page_size' in request_args:
+            page_size = int(request_args['page_size'])
+        begin_index = page_no * page_size
+        end_index = (page_no + 1) * page_size
+        print('page_no', begin_index, end_index, 'page_size', page_size)
+
+    ccms_arr={ccms_d['ccms_no']: {'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']} 
     start = timer()
-    for light in all_lights:
-        for ccms_data in ccms_arr:
-            if(light['CCMS_no']==ccms_data['ccms_no']):
-                light['Connected Load'] = ccms_data['connected_load']
-                light['Actual Load'] = ccms_data['actual_load']
-                light_data[(light['lng'], light['lat'])]['Connected Load'] = ccms_data['connected_load']
-                light_data[(light['lng'], light['lat'])]['Actual Load'] = ccms_data['actual_load']
-                
+    for light in all_lights[begin_index: end_index]:
+        if light['CCMS_no'] in ccms_arr.keys():
+            light['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
+            light['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
+            light_data[(light['lng'], light['lat'])]['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
+            light_data[(light['lng'], light['lat'])]['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
+                          
     end = timer()
-    print("loading time", end-start)
-    return all_lights
+    response = [light for light in all_lights if not only_live or light['Unique Pole No.'] != '']
+    response = response[begin_index: end_index]
+    print(begin_index, end_index, "loading time", end-start, ' | response size:', len(response))
+    return response
+
+
 
 @app.get("/route")
 def get_route(req: Request):
@@ -370,68 +397,90 @@ def get_route(req: Request):
 
     distance_from_path = (9.000712452*light_distance_from_path + 11.43801869731)/1000000
 
-    directions_api_response = maps.directions(source, destination)
+    directions_api_response = maps.directions(source, destination, alternatives=True)
 
-    route_duplicate = []
-    path = dict()
+    print("number of response = ", len(directions_api_response))
 
-    start_location = [directions_api_response[0]['legs'][0]['start_location'], 0]
-    end_location = [directions_api_response[0]['legs'][0]['end_location'], directions_api_response[0]['legs'][0]['distance']['value']]
+    all_routes = {'num':len(directions_api_response)}
 
-    for direction in directions_api_response[0]['legs'][0]['steps']:
-        polyline = googlemaps.convert.decode_polyline(direction['polyline']['points'])
-        route_duplicate += polyline
+    best_route_index = 0
+    best_route_dark_distance = 1e9
 
-    route = []
-    route.append(route_duplicate[0])
-    for i in range(1, len(route_duplicate)):
-        if route_duplicate[i-1] != route_duplicate[i]:
-            route.append(route_duplicate[i])
-    
-    
-    total_distance = 0
-    path[(route[0]['lat'], route[0]['lng'])] = total_distance 
-    for i in range(1, len(route)):
-        prev_point = route[i-1] 
-        coordinate = route[i]
-        total_distance += haversine(coordinate['lat'], coordinate['lng'], prev_point['lat'], prev_point['lng'])
-        path[(coordinate['lat'], coordinate['lng'])] = total_distance 
-            
-    close_lights = dict()
+    for route_num in range(len(directions_api_response)):
+        print(f"---ROUTE {route_num}---")
 
-    start = timer()
-    for i in range(1, len(route)):
-        p1 = (route[i-1]['lat'], route[i-1]['lng'])
-        p2 = (route[i]['lat'], route[i]['lng'])
-        lights, distances = pointToLineDistance(p1, p2, light_coordinates, distance_from_path)
-        for j in range(len(lights)):
-            current_light = (lights[j][0], lights[j][1]) 
-            if current_light in close_lights.keys():
-                if close_lights[current_light][2] > distances[j]:
-                    close_lights[current_light] = (p1, p2, distances[j])   
-            else:
-                close_lights[current_light] = (p1, p2, distances[j])
-    
-    end = timer()
-    print("main algo time", end - start) 
-    
+        route_duplicate = []
+        path = dict()
 
-    lights_considered = [[x[0], x[1], close_lights[x][0], close_lights[x][1]] for x in close_lights]
-    perpendiculars, perpendiculars_list, gath = find_perpendiculars(lights_considered, path, start_location, end_location)
+        start_location = [directions_api_response[route_num]['legs'][0]['start_location'], 0]
+        end_location = [directions_api_response[route_num]['legs'][0]['end_location'], directions_api_response[route_num]['legs'][0]['distance']['value']]
 
-    path = sorted(path.items(), key=lambda kv: kv[1])
-    
-    dark_routes, dark_route_bounds, dark_spot_distances = find_dark_spots(perpendiculars_list, path, dark_route_threshold)
+        for direction in directions_api_response[route_num]['legs'][0]['steps']:
+            polyline = googlemaps.convert.decode_polyline(direction['polyline']['points'])
+            route_duplicate += polyline
 
-    close_lights = [{'lat': x[0], 'lng': x[1], 'CCMS_no':light_data[(x[1],x[0])]['CCMS_no'], 'zone':light_data[(x[1],x[0])]['zone'], 'Type of Light':light_data[(x[1],x[0])]['Type of Light'], 'No. Of Lights':light_data[(x[1],x[0])]['No. Of Lights'], 'Ward No.':light_data[(x[1],x[0])]['Ward No.'] , 'Wattage':light_data[(x[1],x[0])]['Wattage'], 'Connected Load':light_data[(x[1],x[0])]['Connected Load'], 'Actual Load':light_data[(x[1],x[0])]['Actual Load']} for x in close_lights]
+        route = []
+        route.append(route_duplicate[0])
+        for i in range(1, len(route_duplicate)):
+            if route_duplicate[i-1] != route_duplicate[i]:
+                route.append(route_duplicate[i])
+        
+        total_distance = 0
+        path[(route[0]['lat'], route[0]['lng'])] = total_distance 
+        for i in range(1, len(route)):
+            prev_point = route[i-1] 
+            coordinate = route[i]
+            total_distance += haversine(coordinate['lat'], coordinate['lng'], prev_point['lat'], prev_point['lng'])
+            path[(coordinate['lat'], coordinate['lng'])] = total_distance 
+                
+        close_lights = dict()
 
-    dark_route_bounds = []
+        start = timer()
+        for i in range(1, len(route)):
+            p1 = (route[i-1]['lat'], route[i-1]['lng'])
+            p2 = (route[i]['lat'], route[i]['lng'])
+            lights, distances = pointToLineDistance(p1, p2, light_coordinates, distance_from_path)
+            for j in range(len(lights)):
+                current_light = (lights[j][0], lights[j][1]) 
+                if current_light in close_lights.keys():
+                    if close_lights[current_light][2] > distances[j]:
+                        close_lights[current_light] = (p1, p2, distances[j])   
+                else:
+                    close_lights[current_light] = (p1, p2, distances[j])
+        
+        end = timer()
+        print("main algo time", end - start) 
+        
 
-    output = {'route': route, 'route_lights': close_lights, 'bounds': directions_api_response[0]['bounds'], 'dark_routes': dark_routes, 'dark_route_bounds': dark_route_bounds, 'perpendiculars': perpendiculars, 'dark_spot_distances':  dark_spot_distances, 'indicator': perpendiculars}
-    end = timer()
-    print(end - start) 
-    return output
+        lights_considered = [[x[0], x[1], close_lights[x][0], close_lights[x][1]] for x in close_lights]
+        perpendiculars, perpendiculars_list, gath = find_perpendiculars(lights_considered, path, start_location, end_location)
 
+        path = sorted(path.items(), key=lambda kv: kv[1])
+        
+        dark_routes, dark_route_bounds, dark_spot_distances = find_dark_spots(perpendiculars_list, path, dark_route_threshold)
+
+        print(dark_spot_distances)
+
+        close_lights = [{'lat': x[0], 'lng': x[1], 'CCMS_no':light_data[(x[1],x[0])]['CCMS_no'], 'zone':light_data[(x[1],x[0])]['zone'], 'Type of Light':light_data[(x[1],x[0])]['Type of Light'], 'No. Of Lights':light_data[(x[1],x[0])]['No. Of Lights'], 'Ward No.':light_data[(x[1],x[0])]['Ward No.'] , 'Wattage':light_data[(x[1],x[0])]['Wattage'], 'Connected Load':light_data[(x[1],x[0])]['Connected Load'], 'Actual Load':light_data[(x[1],x[0])]['Actual Load'], 'Unique Pole No.':light_data[(x[1],x[0])]['Unique Pole No.']} for x in close_lights]
+
+        dark_route_bounds = []
+
+        output = {'route': route, 'route_lights': close_lights, 'bounds': directions_api_response[route_num]['bounds'], 'dark_routes': dark_routes, 'dark_route_bounds': dark_route_bounds, 'perpendiculars': perpendiculars, 'dark_spot_distances':  dark_spot_distances, 'indicator': perpendiculars}
+        end = timer()
+        print(end - start) 
+
+        # Choosing best route
+        longest_dark_route = max(dark_spot_distances)
+        
+        if(longest_dark_route < best_route_dark_distance):
+            best_route_dark_distance = longest_dark_route
+            best_route_index = route_num
+
+        all_routes[f'route_{route_num}'] = output
+
+    all_routes['best_route_index'] = best_route_index
+
+    return all_routes
 
 
 @app.get("/addLight")
@@ -481,9 +530,34 @@ def deleteLight(req: Request):
     return
 
 
-@app.get("/report")
-def report(req: Request):
+
+
+@app.get("/reportLight")
+async def report(req: Request):
     request_args = dict(req.query_params)
+    unique_pole_no = str(request_args['unique_pole_no'])
+    phone_no = request_args['phone_no']
+    report_type = request_args['report_type']
+
+    try:
+        rows = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] , 'Wattage':streetlight['Wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['Unique Pole No.']} for streetlight in all_lights if streetlight['Unique Pole No.']==unique_pole_no][0]
+  
+
+        db['reports'].insert_one({'lat': rows['lat'], 'lng': rows['lng'], 'timestamp': str(datetime.now(IST)),'id': str(rows['lat']) + " " + str(rows['lng']) + " " + str(datetime.now(IST)),'CCMS_no': rows['CCMS_no'], 'zone': unique_pole_no[2:4], 'Type_of_Light': rows['Type of Light'], 'No_Of_Lights': rows['No. Of Lights'], 'Wattage': rows['Wattage'], 'Ward_No': unique_pole_no[4:7], 'Connected_Load': rows['Connected Load'], 'Actual_load': rows['Actual Load'], 'phone_no': phone_no, 'report_type': report_type, 'unique_pole_no' : unique_pole_no, 'agency':unique_pole_no[0:2], 'unique_no': unique_pole_no[7:] })
+    except Exception as e:
+        print(e)
+    #print(list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp'], 'id':report['id'], 'CCMS_no': report['CCMS_no'], 'zone': report['zone'], 'Type_of_Light': report['Type_of_Light'], 'No_Of_Lights': report['No_Of_Lights'], 'Wattage': report['Wattage'], 'Ward_No': report['Ward_No'], 'Connected Load': ['Connected_Load'], 'Actual Load': report['Actual_load'], 'Phone No': report['phone_no'], 'Report Type': report['report_type'], 'unique_pole_no' : report['unique_pole_no'], 'agency':report['agency'], 'unique_no': report['unique_no']}, db['reports'].find())))
+    finally:
+        return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp'], 'id':report['id'], 'CCMS_no': report['CCMS_no'], 'zone': report['zone'], 'Type_of_Light': report['Type_of_Light'], 'No_Of_Lights': report['No_Of_Lights'], 'Wattage': report['Wattage'], 'Ward_No': report['Ward_No'], 'Connected Load': report['Connected_Load'], 'Actual Load': report['Actual_load'], 'Phone No': report['phone_no'], 'Report Type': report['report_type'], 'unique_pole_no' : report['unique_pole_no'], 'agency':report['agency'], 'unique_no': report['unique_no']}, db['reports'].find()))
+    
+ 
+
+
+@app.get("/report")
+async def report(req: Request):
+    request_args = dict(req.query_params)
+    # request_args = await req.json()
+    # print(request_args)
     lat = float(request_args['lat'])
     lng = float(request_args['lng'])
     CCMS_no = request_args['CCMS_no']
@@ -496,15 +570,19 @@ def report(req: Request):
     Actual_load=request_args['Actual_load']
     phone_no = request_args['phone_no']
     report_type = request_args['report_type']
-    db['reports'].insert_one({'lat': lat, 'lng': lng, 'timestamp': str(datetime.now(IST)),'id': str(lat) + " " + str(lng) + " " + str(datetime.now(IST)),'CCMS_no': CCMS_no, 'zone': Zone, 'Type_of_Light': Type_of_Light, 'No_Of_Lights': No_Of_Lights, 'Wattage': Wattage, 'Ward_No': Ward_No, 'Connected_Load': Connected_Load, 'Actual_load': Actual_load, 'phone_no': phone_no, 'report_type': report_type})
-    return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp'], 'id':report['id'], 'CCMS_no': report['CCMS_no'], 'zone': report['zone'], 'Type_of_Light': report['Type_of_Light'], 'No_Of_Lights': report['No_Of_Lights'], 'Wattage': report['Wattage'], 'Ward_No': report['Ward_No'], 'Connected Load': ['Connected_Load'], 'Actual Load': report['Actual_load'], 'Phone No': report['phone_no'], 'Report Type': report['report_type']}, db['reports'].find()))
+    unique_pole_no = request_args['unique_pole_no']
+    agency = request_args['agency']
+    unique_no = request_args['unique_no']
+    db['reports'].insert_one({'lat': lat, 'lng': lng, 'timestamp': str(datetime.now(IST)),'id': str(lat) + " " + str(lng) + " " + str(datetime.now(IST)),'CCMS_no': CCMS_no, 'zone': Zone, 'Type_of_Light': Type_of_Light, 'No_Of_Lights': No_Of_Lights, 'Wattage': Wattage, 'Ward_No': Ward_No, 'Connected_Load': Connected_Load, 'Actual_load': Actual_load, 'phone_no': phone_no, 'report_type': report_type, 'unique_pole_no' : unique_pole_no, 'agency':agency, 'unique_no': unique_no })
+    # print(list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp'], 'id':report['id'], 'CCMS_no': report['CCMS_no'], 'zone': report['zone'], 'Type_of_Light': report['Type_of_Light'], 'No_Of_Lights': report['No_Of_Lights'], 'Wattage': report['Wattage'], 'Ward_No': report['Ward_No'], 'Connected Load': ['Connected_Load'], 'Actual Load': report['Actual_load'], 'Phone No': report['phone_no'], 'Report Type': report['report_type'], 'unique_pole_no' : report['unique_pole_no'], 'agency':report['agency'], 'unique_no': report['unique_no']}, db['reports'].find())))
+    return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp'], 'id':report['id'], 'CCMS_no': report['CCMS_no'], 'zone': report['zone'], 'Type_of_Light': report['Type_of_Light'], 'No_Of_Lights': report['No_Of_Lights'], 'Wattage': report['Wattage'], 'Ward_No': report['Ward_No'], 'Connected Load': report['Connected_Load'], 'Actual Load': report['Actual_load'], 'Phone No': report['phone_no'], 'Report Type': report['report_type'], 'unique_pole_no' : report['unique_pole_no'], 'agency':report['agency'], 'unique_no': report['unique_no']}, db['reports'].find()))
  
 @app.get("/reports")
 def get_reports():
     # print(db['reports'].find())
     # for x in db['reports'].find():
     #     print(x)
-    return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp'], 'id':report['id'], 'CCMS_no': report['CCMS_no'], 'zone': report['zone'], 'Type_of_Light': report['Type_of_Light'], 'No_Of_Lights': report['No_Of_Lights'], 'Wattage': report['Wattage'], 'Ward_No': report['Ward_No'], 'Connected Load': report['Connected_Load'], 'Actual Load': report['Actual_load'], 'Phone No': report['phone_no'], 'Report Type': report['report_type']}, db['reports'].find()))
+    return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp'], 'id':report['id'], 'CCMS_no': report['CCMS_no'], 'zone': report['zone'], 'Type_of_Light': report['Type_of_Light'], 'No_Of_Lights': report['No_Of_Lights'], 'Wattage': report['Wattage'], 'Ward_No': report['Ward_No'], 'Connected Load': report['Connected_Load'], 'Actual Load': report['Actual_load'], 'Phone No': report['phone_no'], 'Report Type': report['report_type'], 'unique_pole_no' : report['unique_pole_no'], 'agency':report['agency'], 'unique_no': report['unique_no']}, db['reports'].find()))
 
 @app.get("/report_region")
 def report_region(req: Request):
@@ -527,7 +605,7 @@ def report_region(req: Request):
     print(len(lights), len(light_coordinates))
     # lights_to_be_reported = [{'lat': x[0], 'lng': x[1], 'CCMS_no':light_data[(x[1],x[0])]['CCMS_no'], 'zone':light_data[(x[1],x[0])]['zone'], 'Type of Light':light_data[(x[1],x[0])]['Type of Light'], 'No. Of Lights':light_data[(x[1],x[0])]['No. Of Lights'], 'Ward No.':light_data[(x[1],x[0])]['Ward No.'] , 'Wattage':light_data[(x[1],x[0])]['Wattage'], 'Connected Load':light_data[(x[1],x[0])]['Connected Load'], 'Actual Load':light_data[(x[1],x[0])]['Actual Load']} for x in lights]
     for x in lights:
-        db['reports'].insert_one({'lat': x[0], 'lng': x[1], 'timestamp': str(datetime.now(IST)),'id':str(x[0]) + " " + str(x[1]) + " " + str(datetime.now(IST)),'CCMS_no': light_data[(x[1],x[0])]['CCMS_no'], 'zone': light_data[(x[1],x[0])]['zone'], 'Type_of_Light': light_data[(x[1],x[0])]['Type of Light'], 'No_Of_Lights': light_data[(x[1],x[0])]['No. Of Lights'], 'Wattage': light_data[(x[1],x[0])]['Wattage'], 'Ward_No': light_data[(x[1],x[0])]['Ward No.'], 'Connected_Load': light_data[(x[1],x[0])]['Connected Load'], 'Actual_load': light_data[(x[1],x[0])]['Actual Load'], 'phone_no': phone_no, 'report_type': report_type})
+        db['reports'].insert_one({'lat': x[0], 'lng': x[1], 'timestamp': str(datetime.now(IST)),'id':str(x[0]) + " " + str(x[1]) + " " + str(datetime.now(IST)),'CCMS_no': light_data[(x[1],x[0])]['CCMS_no'], 'zone': light_data[(x[1],x[0])]['zone'] if light_data[(x[1],x[0])]['Unique Pole No.'] =='' else light_data[(x[1],x[0])]['Unique Pole No.'][2:4] , 'Type_of_Light': light_data[(x[1],x[0])]['Type of Light'], 'No_Of_Lights': light_data[(x[1],x[0])]['No. Of Lights'], 'Wattage': light_data[(x[1],x[0])]['Wattage'], 'Ward_No': light_data[(x[1],x[0])]['Ward No.'] if light_data[(x[1],x[0])]['Unique Pole No.']=='' else light_data[(x[1],x[0])]['Unique Pole No.'][4:7] , 'Connected_Load': light_data[(x[1],x[0])]['Connected Load'], 'Actual_load': light_data[(x[1],x[0])]['Actual Load'], 'unique_pole_no' : light_data[(x[1],x[0])]['Unique Pole No.'], 'agency':light_data[(x[1],x[0])]['Unique Pole No.'][0:2] if light_data[(x[1],x[0])]['Unique Pole No.']!='' else '', 'unique_no': light_data[(x[1],x[0])]['Unique Pole No.'][7:] if light_data[(x[1],x[0])]['Unique Pole No.']!='' else '','phone_no': phone_no, 'report_type': report_type})
     print("reported")
 
 
@@ -554,12 +632,12 @@ def resolveReport(req: Request):
         db['resolved-reports'].insert_one(resolved_light_data)
     
         
-    return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp'], 'id':report['id'], 'CCMS_no': report['CCMS_no'], 'zone': report['zone'], 'Type_of_Light': report['Type_of_Light'], 'No_Of_Lights': report['No_Of_Lights'], 'Wattage': report['Wattage'], 'Ward_No': report['Ward_No'], 'Connected Load': report['Connected_Load'], 'Actual Load': report['Actual_load'], 'Phone No': report['phone_no'], 'Report Type': report['report_type']}, db['reports'].find()))
+    return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp'], 'id':report['id'], 'CCMS_no': report['CCMS_no'], 'zone': report['zone'], 'Type_of_Light': report['Type_of_Light'], 'No_Of_Lights': report['No_Of_Lights'], 'Wattage': report['Wattage'], 'Ward_No': report['Ward_No'], 'Connected Load': report['Connected_Load'], 'Actual Load': report['Actual_load'], 'Phone No': report['phone_no'], 'Report Type': report['report_type'], 'unique_pole_no':report['unique_pole_no'], 'agency':report['agency'], 'unique_no': report['unique_no']}, db['reports'].find()))
 
 
 @app.get("/getResolvedReport")
 def getResolvedReport():
-    return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'resolved_timestamp': report['resolved_timestamp'], 'reported_timestamp': report['timestamp'], 'id':report['id'], 'CCMS_no': report['CCMS_no'], 'zone': report['zone'], 'Type_of_Light': report['Type_of_Light'], 'No_Of_Lights': report['No_Of_Lights'], 'Wattage': report['Wattage'], 'Ward_No': report['Ward_No'], 'Connected Load': report['Connected_Load'], 'Actual Load': report['Actual_load'], 'Phone No': report['phone_no'], 'Report Type': report['report_type'], 'Comments': report['Comments']}, db['resolved-reports'].find()))
+    return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'resolved_timestamp': report['resolved_timestamp'], 'timestamp': report['timestamp'], 'id':report['id'], 'CCMS_no': report['CCMS_no'], 'zone': report['zone'], 'Type_of_Light': report['Type_of_Light'], 'No_Of_Lights': report['No_Of_Lights'], 'Wattage': report['Wattage'], 'Ward_No': report['Ward_No'], 'Connected Load': report['Connected_Load'], 'Actual Load': report['Actual_load'], 'Phone No': report['phone_no'], 'Report Type': report['report_type'], 'Comments': report['Comments'], 'unique_pole_no':report['unique_pole_no'], 'agency':report['agency'], 'unique_no': report['unique_no']}, db['resolved-reports'].find()))
 
 
 @app.post("/addLightsFile")

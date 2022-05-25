@@ -26,9 +26,9 @@ def fetch():
 
 def insert(data):
     for i in range(len(data)):
-        ccms_id = data[i]['ccms_no'][0:8]+"W"+data[i]['ccms_no'][9:]
-
+        ccms_id = data[i]['ccms_no'][0:7]+"\\"+data[i]['ccms_no'][7:]
         data[i]['ccms_no'] = ccms_id
+ 
     ccms.insert_many(data)
 
 while True:
@@ -36,7 +36,7 @@ while True:
         data = fetch()
         ccms.drop()
         insert(data)
-
+       
         print('updated')
     except Exception as exception:
         print(exception)

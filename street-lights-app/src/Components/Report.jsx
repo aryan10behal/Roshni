@@ -56,14 +56,17 @@ function Report({lights}) {
             <div>Latitude: ${marker.position.lat()}</div>
             <div>Longitude: ${marker.position.lng()}</div>
             <div>CCMS No.: ${position['CCMS NO']}</div>
-            <div>Zone: ${position['Zone']}</div>
-            <div>Ward No.: ${position['Ward No.']}</div>
             <div>Type of Light: ${position['Type of Light']}</div>
             <div>No. Of Lights: ${position['No. Of Lights']}</div>
             <div>Wattage: ${parseInt(position['Wattage'])}</div>
             <div>Connected Load: ${position['Connected Load']!=-1?position['Connected Load']:0}</div>
             <div>Actual Load: ${position['Actual Load']!=-1?position['Actual Load']:0}</div>
             <div>status: ${marker.status ? "Not Working" : "Working"}</div>
+            <div>Unique Pole No.: ${position['Unique Pole No.']}</div>
+            <div>Agency: ${position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(0,2):''}</div>
+            <div>Zone: ${position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(2,4):position['Zone']}</div>
+            <div>Ward No.: ${position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(4,7):position['Ward No.']}</div>
+            <div>Unique No.: ${position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(7,):""}</div>
             </div>`,
         });
         infowindow.open({
@@ -71,7 +74,7 @@ function Report({lights}) {
             map,
             shouldFocus: false,
         })
-        setSelectedLight({lat: marker.position.lat(), lng: marker.position.lng(), CCMS_NO:position['CCMS NO'], Zone:position['Zone'], Type_of_light:position['Type of Light'], No_of_lights:position['No. Of Lights'], Wattage:position['Wattage'], connected_load:position['Connected Load'], actual_load:position['Actual Load'], ward_no:position['Ward No.'] });
+        setSelectedLight({lat: marker.position.lat(), lng: marker.position.lng(), CCMS_NO:position['CCMS NO'], Zone:position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(2,4):position['Zone'], Type_of_light:position['Type of Light'], No_of_lights:position['No. Of Lights'], Wattage:position['Wattage'], connected_load:position['Connected Load'], actual_load:position['Actual Load'], ward_no:position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(4,7):position['Ward No.'], agency:position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(0,2):'', unique_no:position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(7,):'', unique_pole_no:position['Unique Pole No.'] });
     }
 
 
@@ -159,7 +162,7 @@ function SelectedLight({light, reports, setReports}) {
 
     function reportLight(issue, contact) {
         setStatus(REPORTING)
-        let request = `${env.BACKEND}/report?lat=${light.lat}&lng=${light.lng}&CCMS_no=${light.CCMS_NO}&zone=${light.Zone}&Type_of_Light=${light.Type_of_light}&No_Of_Lights=${light.No_of_lights}&Ward_No=${light.ward_no}&Wattage=${light.Wattage}&Connected_Load=${light.connected_load}&Actual_load=${light.actual_load}&phone_no=${contact}&report_type=${issue}`
+        let request = `${env.BACKEND}/report?lat=${light.lat}&lng=${light.lng}&CCMS_no=${light.CCMS_NO}&zone=${light.Zone}&Type_of_Light=${light.Type_of_light}&No_Of_Lights=${light.No_of_lights}&Ward_No=${light.ward_no}&Wattage=${light.Wattage}&Connected_Load=${light.connected_load}&Actual_load=${light.actual_load}&unique_pole_no=${light.unique_pole_no}&agency=${light.agency}&unique_no=${light.unique_no}&phone_no=${contact}&report_type=${issue}`
         console.log(request)
         fetch(request)
         .then((response) => {

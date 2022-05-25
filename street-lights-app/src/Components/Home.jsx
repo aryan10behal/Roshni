@@ -47,7 +47,7 @@ function Home({lights}) {
     function positionData(position){
 
       var latLng = new window.google.maps.LatLng({'lng':position['lng'], 'lat':position['lat']});
-      var positionData = {'LatLng': latLng, 'CCMS NO':position['CCMS_no'], 'Zone':position['zone'], 'Type of Light':position['Type of Light'], 'No. Of Lights':position['No. Of Lights'], 'Ward No.':position['Ward No.'] ,'Wattage':position['Wattage'],'Connected Load':position['Connected Load'], 'Actual Load':position['Actual Load']};
+      var positionData = {'LatLng': latLng, 'CCMS NO':position['CCMS_no'], 'Zone':position['zone'], 'Type of Light':position['Type of Light'], 'No. Of Lights':position['No. Of Lights'], 'Ward No.':position['Ward No.'] ,'Wattage':position['Wattage'],'Connected Load':position['Connected Load'], 'Actual Load':position['Actual Load'], 'Unique Pole No.':position['Unique Pole No.']};
       return positionData;
   }
 
@@ -108,20 +108,24 @@ function Home({lights}) {
 
   function onMarkerClick(marker, position, map) {
 
+    console.log(typeof(position['Unique Pole No.']))
     let id = `${marker.position.lat()},${marker.position.lng()}`;
     const infowindow = new window.google.maps.InfoWindow({
         content: `<div>
             <div>Latitude: ${marker.position.lat()}</div>
             <div>Longitude: ${marker.position.lng()}</div>
             <div>CCMS No.: ${position['CCMS NO']}</div>
-            <div>Zone: ${position['Zone']}</div>
-            <div>Ward No.: ${position['Ward No.']}</div>
             <div>Type of Light: ${position['Type of Light']}</div>
             <div>No. Of Lights: ${position['No. Of Lights']}</div>
             <div>Wattage: ${parseInt(position['Wattage'])}</div>
             <div>Connected Load: ${position['Connected Load']!=-1?position['Connected Load']:0}</div>
             <div>Actual Load: ${position['Actual Load']!=-1?position['Actual Load']:0}</div>
-            <div>status: ${marker.status ? "Not Working" : "Working"}</div>
+            <div>Unique Pole No.: ${position['Unique Pole No.']}</div>
+            <div>Agency: ${position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(0,2):''}</div>
+            <div>Zone: ${position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(2,4):position['Zone']}</div>
+            <div>Ward No.: ${position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(4,7):position['Ward No.']}</div>
+            <div>Unique No.: ${position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(7,):""}</div>
+            
         </div>`,
     });
   

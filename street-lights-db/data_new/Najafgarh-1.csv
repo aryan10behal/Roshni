@@ -1,4 +1,4 @@
-Sr. No.,CCMS NO.,Zone,Latitude,Longitude,Type of Light,No. Of Lights,Wattage,Ward No.,Wattage,Connected Load,,,,
+Sr. No.,CCMS NO.,Zone,Latitude,Longitude,Type of Light,No. Of Lights,Wattage,Ward No.,Wattage,Connected Load,,,,,Unique Pole No.
 1,NZ-130-014,NAJAFGARH,28.595304,77.088783,LED,1,45,130,45,45,,,,
 2,NZ-130-014,NAJAFGARH,28.596666,77.086784,LED,1,72,130,72,72,,,5.17MW,
 3,NZ-130-014,NAJAFGARH,28.596685,77.086613,LED,1,45,130,45,45,,,,

@@ -1,4 +1,4 @@
-SR. NO.,CCMS NO,Zone,Ward No.,Latitude,Longitude,Type of Light,No. Of Lights,Wattage,Wattage,Connected Load,,,
+SR. NO.,CCMS NO,Zone,Ward No.,Latitude,Longitude,Type of Light,No. Of Lights,Wattage,Wattage,Connected Load,,,,Unique Pole No.
 1,SZ-171-011,SOUTH,171,28.535387,77.149774,LED,1,70,70,70,,,
 2,SZ-171-011,SOUTH,171,28.535385,77.149779,LED,1,70,70,70,,,
 4,SZ-171-011,SOUTH,171,28.535493,77.149842,LED,1,70,70,70,,,

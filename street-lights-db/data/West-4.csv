@@ -1,4 +1,4 @@
-SR. NO.,CCMS NO,Zone,Latitude,Longitude,Type of Light,No. Of Lights,Wattage,Ward No.,Wattage,Connected Load,,,
+SR. NO.,CCMS NO,Zone,Latitude,Longitude,Type of Light,No. Of Lights,Wattage,Ward No.,Wattage,Connected Load,,,,Unique Pole No.
 1,WZ-121-050,WEST,28.653427,77.040584,LED,1,72,121,72,72,,,
 2,WZ-121-050,WEST,28.652748,77.040578,LED,1,72,121,72,72,,,
 3,WZ-121-050,WEST,28.652744,77.040363,LED,1,72,121,72,72,,CCMS NO,Sum of Connected Load
