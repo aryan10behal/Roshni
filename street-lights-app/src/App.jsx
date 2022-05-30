@@ -9,6 +9,7 @@ import Register from './Components/Register';
 import env from "react-dotenv";
 import { UserContext } from "./context/UserContext";
 
+
 function App() {
     const [lights, setLights] = useState([]);
     const [loading, setLoading] = useState(false);

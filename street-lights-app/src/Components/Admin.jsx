@@ -334,6 +334,7 @@ function Admin({setLights}) {
                     checkboxSelection
                     onSelectionModelChange={(newSelection) => {
                     setSelectionModel(newSelection);
+                    console.log(selectionModel);
                     }}
                     selectionModel={selectionModel}
                     

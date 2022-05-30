@@ -74,7 +74,7 @@ function Report({lights}) {
             map,
             shouldFocus: false,
         })
-        setSelectedLight({lat: marker.position.lat(), lng: marker.position.lng(), CCMS_NO:position['CCMS NO'], Zone:position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(2,4):position['Zone'], Type_of_light:position['Type of Light'], No_of_lights:position['No. Of Lights'], Wattage:position['Wattage'], connected_load:position['Connected Load'], actual_load:position['Actual Load'], ward_no:position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(4,7):position['Ward No.'], agency:position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(0,2):'', unique_no:position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(7,):'', unique_pole_no:position['Unique Pole No.'] });
+        setSelectedLight(position['Unique Pole No.']);
     }
 
 
@@ -162,7 +162,7 @@ function SelectedLight({light, reports, setReports}) {
 
     function reportLight(issue, contact) {
         setStatus(REPORTING)
-        let request = `${env.BACKEND}/report?lat=${light.lat}&lng=${light.lng}&CCMS_no=${light.CCMS_NO}&zone=${light.Zone}&Type_of_Light=${light.Type_of_light}&No_Of_Lights=${light.No_of_lights}&Ward_No=${light.ward_no}&Wattage=${light.Wattage}&Connected_Load=${light.connected_load}&Actual_load=${light.actual_load}&unique_pole_no=${light.unique_pole_no}&agency=${light.agency}&unique_no=${light.unique_no}&phone_no=${contact}&report_type=${issue}`
+        let request = `${env.BACKEND}/report?unique_pole_no=${light}&phone_no=${contact}&report_type=${issue}`
         console.log(request)
         fetch(request)
         .then((response) => {
@@ -222,7 +222,9 @@ function ReportForm({report, open, setOpen, setToast}) {
     let Report_4_Textbox = (<TextField variant="standard" label="Other" onChange={(e) => setReport_4(e.target.value)} type = "text" />)
     let Report_5_Textbox = (<TextField variant="standard" label="Contact Number" onChange={(e) => setReport_5(e.target.value)} type = "text" />)
 
-    let CheckFormToast = (<Alert severity="error">Please choose the problem or specify in other</Alert>)
+
+
+    let CheckFormToast = (<Alert severity="error">Please choose the problem or specify in other. Mention the mail id</Alert>)
 
     function getIssueAndContact() {
         console.log(report_1, report_2, report_3, report_4)
