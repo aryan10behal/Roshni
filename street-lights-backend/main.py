@@ -192,7 +192,6 @@ def find_dark_spots(perpendiculars, path, dark_route_threshold):
     path_size = len(path)
     dark_routes = []
     dark_spot_distance = []
-    dark_bounds = []
 
     for i in range(1, len(perpendiculars)):
         distance = perpendiculars[i]['dist'] - perpendiculars[i-1]['dist']
@@ -213,7 +212,7 @@ def find_dark_spots(perpendiculars, path, dark_route_threshold):
             j-=1
             dark_routes.append(dark_route)
 
-    return  dark_routes, dark_bounds, dark_spot_distance
+    return  dark_routes, dark_spot_distance
 
 
 
@@ -463,17 +462,16 @@ def get_route(req: Request):
 
         path = sorted(path.items(), key=lambda kv: kv[1])
         
-        dark_routes, dark_route_bounds, dark_spot_distances = find_dark_spots(perpendiculars_list, path, dark_route_threshold)
+        dark_routes, dark_spot_distances = find_dark_spots(perpendiculars_list, path, dark_route_threshold)
 
-        print(dark_spot_distances)
+
+        dark_route_bounds = directions_api_response[route_num]['bounds']
 
         close_lights = [{'lat': x[0], 'lng': x[1], 'CCMS_no':light_data[(x[1],x[0])]['CCMS_no'], 'zone':light_data[(x[1],x[0])]['zone'], 'Type of Light':light_data[(x[1],x[0])]['Type of Light'], 'No. Of Lights':light_data[(x[1],x[0])]['No. Of Lights'], 'Ward No.':light_data[(x[1],x[0])]['Ward No.'] , 'Wattage':light_data[(x[1],x[0])]['Wattage'], 'Connected Load':light_data[(x[1],x[0])]['Connected Load'], 'Actual Load':light_data[(x[1],x[0])]['Actual Load'], 'Unique Pole No.':light_data[(x[1],x[0])]['Unique Pole No.']} for x in close_lights]
 
-        dark_route_bounds = []
-
         output = {'route': route, 'route_lights': close_lights, 'bounds': directions_api_response[route_num]['bounds'], 'dark_routes': dark_routes, 'dark_route_bounds': dark_route_bounds, 'perpendiculars': perpendiculars, 'dark_spot_distances':  dark_spot_distances, 'indicator': perpendiculars}
         end = timer()
-        print(end - start) 
+        print("time to compute route: ", end - start) 
 
         # Choosing best route
         longest_dark_route = max(dark_spot_distances)
@@ -485,9 +483,7 @@ def get_route(req: Request):
         all_routes[f'route_{route_num}'] = output
 
     all_routes['best_route_index'] = best_route_index
-    
-    print(all_routes)
-    return all_routes
+    return all_routes['route_0']
 
 
 @app.get("/addLight")
@@ -731,8 +727,8 @@ def resolveReport(req: Request):
 
 @app.get("/getResolvedReport")
 def getResolvedReport():
-    resolved_lights = {report['unique_pole_no']: {'timestamp': report['timestamp'], 'id':report['id'], 'Phone No': report['phone_no'], 'resolved_timestamp': report['resolved_timestamp'] ,'Report Type': report['report_type'], 'unique_pole_no' : report['unique_pole_no']} for report in db['resolved-reports'].find()}
-    resolved_lights = [{'lng': lights['lng'], 'lat': lights['lat'], 'timestamp': resolved_lights[lights['Unique Pole No.']]['timestamp'],'resolved_timestamp': resolved_lights[lights['Unique Pole No.']]['resolved_timestamp'], 'id':resolved_lights[lights['Unique Pole No.']]['id'],  'CCMS_no': lights['CCMS_no'], 'zone': lights['zone'], 'Type_of_Light': lights['Type of Light'], 'No_Of_Lights': lights['No. Of Lights'], 'Wattage': lights['Wattage'], 'Ward_No': lights['Ward No.'], 'Connected Load':lights['Connected Load'], 'Actual Load': lights['Actual Load'], 'unique_pole_no': lights['Unique Pole No.'], 'agency': lights['agency'], 'Phone No': resolved_lights[lights['Unique Pole No.']]['Phone No'], 'Report Type': resolved_lights[lights['Unique Pole No.']]['Report Type'],'unique_no': lights['unique_no']} for lights in all_lights if lights['Unique Pole No.'] in resolved_lights.keys()]
+    resolved_lights = {report['unique_pole_no']: {'id':report['id'], 'Phone No': report['phone_no'],'timestamp': report['timestamp'], 'resolved_timestamp': report['resolved_timestamp'] ,'Comments': report['Comments'],'Report Type': report['report_type'], 'unique_pole_no' : report['unique_pole_no']} for report in db['resolved-reports'].find()}
+    resolved_lights = [{'lng': lights['lng'], 'lat': lights['lat'], 'timestamp': resolved_lights[lights['Unique Pole No.']]['timestamp'],'resolved_timestamp': resolved_lights[lights['Unique Pole No.']]['resolved_timestamp'],'resolved_timestamp': resolved_lights[lights['Unique Pole No.']]['resolved_timestamp'], 'Comments': resolved_lights[lights['Unique Pole No.']]['Comments'],'id':resolved_lights[lights['Unique Pole No.']]['id'],  'CCMS_no': lights['CCMS_no'], 'zone': lights['zone'], 'Type_of_Light': lights['Type of Light'], 'No_Of_Lights': lights['No. Of Lights'], 'Wattage': lights['Wattage'], 'Ward_No': lights['Ward No.'], 'Connected Load':lights['Connected Load'], 'Actual Load': lights['Actual Load'], 'unique_pole_no': lights['Unique Pole No.'], 'agency': lights['agency'], 'Phone No': resolved_lights[lights['Unique Pole No.']]['Phone No'], 'Report Type': resolved_lights[lights['Unique Pole No.']]['Report Type'],'unique_no': lights['unique_no']} for lights in all_lights if lights['Unique Pole No.'] in resolved_lights.keys()]
     return resolved_lights
 
 

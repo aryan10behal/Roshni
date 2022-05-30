@@ -13,6 +13,7 @@ function Map({
   heatmapData,
   darkroutes,
   darkDistances,
+  darkbounds,
   onMarkerClick,
   showLiveData,
   showOtherData,
@@ -204,7 +205,7 @@ function Map({
     });
   }, [map, clustererData, showLiveData, showOtherData]);
 
-  //plot route, neighbourin streetlights
+  //plot route, neighbouring streetlights
   React.useEffect(() => {
     if (routePlot.current) {
       routePlot.current.polyline.setMap(null);
@@ -275,6 +276,7 @@ function Map({
         return marker;
       }),
     };
+    
     map.fitBounds(
       new window.google.maps.LatLngBounds(
         routeData.bounds.southwest,
@@ -370,6 +372,12 @@ function Map({
     darkPlot.current.darkSpots.push(marker1);
     darkPlot.current.darkSpots.push(marker2);
 
+    map.fitBounds(
+      new window.google.maps.LatLngBounds(
+        darkbounds.southwest,
+        darkbounds.northeast
+      )
+    );
   }, [map, darkroutes]);
 
   return (

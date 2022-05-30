@@ -184,6 +184,7 @@ function Home({lights}) {
           routeData={showRoute? routeData: null}
           darkroutes={showDarkRoute?darkroutes:[]}
           darkDistances = {showDarkRoute?darkDistances:[]}
+          darkbounds = {showDarkRoute?darkbounds:[]}
           onMarkerClick={onMarkerClick}
           showLiveData={showLiveData}
           showOtherData={showOtherData}
