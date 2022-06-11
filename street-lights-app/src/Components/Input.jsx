@@ -12,7 +12,8 @@ function Input({setShowAllStreetlights, showAllStreetLights, setShowLiveData, sh
     MIN_THRESH_DARK,
     MAX_THRESH_DARK,
     MIN_THRESH_ROUTE,
-    MAX_THRESH_ROUTE}){
+    MAX_THRESH_ROUTE,
+poleInfo}){
     
    
 
@@ -66,7 +67,26 @@ function Input({setShowAllStreetlights, showAllStreetLights, setShowLiveData, sh
             </div>     
             <div style={{display: loading ? "flex" :  "none"}} className="Loading">
                 <CircularProgress />
-            </div>      
+            </div>   
+            {poleInfo?(
+            
+                <div className="Selected-Light">
+                    <div className="PoleInfoHeader">Light Info</div>
+                <div>Latitude: {poleInfo['LatLng'].lat()}</div>
+            <div>Longitude: {poleInfo['LatLng'].lng()}</div>
+            <div>CCMS No.: {poleInfo['CCMS NO']}</div>
+            <div>Type of Light: {poleInfo['Type of Light']}</div>
+            <div>No. Of Lights: {poleInfo['No. Of Lights']}</div>
+            <div>Wattage: {parseInt(poleInfo['Wattage'])}</div>
+            <div>Connected Load: {poleInfo['Connected Load']!=-1?poleInfo['Connected Load']:0}</div>
+            <div>Actual Load: {poleInfo['Actual Load']!=-1?poleInfo['Actual Load']:0}</div>
+            <div>Unique Pole No.: {poleInfo['Unique Pole No.']}</div>
+            <div>Agency: {poleInfo['Unique Pole No.']?poleInfo['Unique Pole No.'].toString().slice(0,2):''}</div>
+            <div>Zone: {poleInfo['Unique Pole No.']?poleInfo['Unique Pole No.'].toString().slice(2,4):poleInfo['Zone']}</div>
+            <div>Ward No.: {poleInfo['Unique Pole No.']?poleInfo['Unique Pole No.'].toString().slice(4,7):poleInfo['Ward No.']}</div>
+            <div>Unique No.: {poleInfo['Unique Pole No.']?poleInfo['Unique Pole No.'].toString().slice(7,):""}</div>
+            </div>
+            ):""}
         </div>  
     );
 

@@ -15,6 +15,7 @@ function Map({
   darkDistances,
   darkbounds,
   onMarkerClick,
+  onMarkerClickPre,
   showLiveData,
   showOtherData,
   allowReportRegion,
@@ -102,8 +103,31 @@ function Map({
 
     if (showLiveData) {
       for (var i = 0; i < clustererData.length; i++) {
-        let position = clustererData[i];
+        
+        let entry = clustererData[i]['poles'].length;
+        let position = clustererData[i]['poles'][0];
         let marker;
+      
+        if(entry>1){
+
+      
+              let positions = clustererData[i]['poles'];
+              marker = new window.google.maps.Marker({
+              position: position["LatLng"],
+              icon: env.BACKEND + "/icon",
+            });
+            // console.log(marker.position.lat(), marker.position.lng());
+            marker.addListener("click", () => onMarkerClickPre(marker, positions, map));
+            markers.push(marker);
+        
+          
+        }
+        else{
+
+        
+       
+
+     
 
         if (position["Connected Load"] == -1 && position["Actual Load"] == -1) {
           continue;
@@ -137,6 +161,7 @@ function Map({
         marker.addListener("click", () => onMarkerClick(marker, position, map));
         markers.push(marker);
       }
+    }
     }
 
     if (showOtherData) {
@@ -205,34 +230,34 @@ function Map({
     });
   }, [map, clustererData, showLiveData, showOtherData]);
 
+
+
   //plot route, neighbouring streetlights
   React.useEffect(() => {
     if (routePlot.current) {
-      routePlot.current.polyline.setMap(null);
+      routePlot.current.polylines.forEach((polyline) => {
+        polyline.setMap(null);
+      });
       routePlot.current.A.setMap(null);
       routePlot.current.B.setMap(null);
-      routePlot.current.routeLights.forEach((routeLight) => {
-        routeLight.setMap(null);
+      routePlot.current.routeLights.forEach((routeLightArr) => {
+        routeLightArr.forEach((routeLight) =>routeLight.setMap(null));
       });
     }
     if (!routeData) return;
+
     routePlot.current = {
-      polyline: new window.google.maps.Polyline({
+      polylines : [],
+      routeLights: []
+    }
+   
+    for(let i = 0; i<routeData.route.length; i++){
+      let polyline = new window.google.maps.Polyline({
         map,
-        path: routeData.route,
-        strokeColor: "DodgerBlue",
-      }),
-      A: new window.google.maps.Marker({
-        map,
-        position: routeData.route[0],
-        label: "A",
-      }),
-      B: new window.google.maps.Marker({
-        map,
-        position: routeData.route[routeData.route.length - 1],
-        label: "B",
-      }),
-      routeLights: routeData.routeLights.map((position) => {
+        path: routeData.route[i],
+        strokeColor: "Grey",
+      });
+      let routeLight = routeData.routeLights[i].map((position) => {
         let marker;
         if (
           position["Connected Load"] == -1 &&
@@ -274,8 +299,28 @@ function Map({
         marker.addListener("click", () => onMarkerClick(marker, position, map));
 
         return marker;
-      }),
-    };
+      })
+
+      routePlot.current.polylines.push(polyline);
+      routePlot.current.routeLights.push(routeLight);
+
+    }
+    routePlot.current.polylines.push(new window.google.maps.Polyline({
+      map,
+      path: routeData.route[routeData.best_route_index],
+      strokeColor: "DodgerBlue",
+    }))
+    routePlot.current.A = new window.google.maps.Marker({
+      map,
+      position: routeData.route[0][0],
+      label: "A",
+    })
+    routePlot.current.B = new window.google.maps.Marker({
+      map,
+      position: routeData.route[0][routeData.route[0].length - 1],
+      label: "A",
+    })
+   
     
     map.fitBounds(
       new window.google.maps.LatLngBounds(
@@ -284,6 +329,7 @@ function Map({
       )
     );
   }, [map, routeData]);
+
 
   //Darkroutes
   React.useEffect(() => {

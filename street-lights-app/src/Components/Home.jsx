@@ -5,7 +5,7 @@ import Input from "./Input"
 
 import React, { useState } from 'react';
 
-function Home({lights}) {
+function Home({lights, poleData}) {
   const render = (status) => {
     return <h1>{status}</h1>;
   };
@@ -42,6 +42,9 @@ function Home({lights}) {
   const [distanceFromStreet, setDistanceFromStreet] = React.useState(MIN_THRESH_ROUTE)
   const [distanceFromStreetDark, setDistanceFromStreetDark] = React.useState(MIN_THRESH_ROUTE)
 
+  //For seeing current pole data
+  const[poleInfo, setPoleInfo] = useState(null);
+
   function fetchRouteData() {
 
     function positionData(position){
@@ -57,14 +60,25 @@ function Home({lights}) {
     fetch(env.BACKEND + `/route?source=${src}&destination=${dest}&darkRouteThreshold=${100}&distanceFromPath=${distanceFromStreet}`)
     .then(response => response.json())
     .then((data) => {
-      setLoading(false);  
-      console.log(data);   
-      let temp = data['route_lights'].map(position => positionData(position));     
+      setLoading(false);   
+      let routeLights = [];
+      let routes = [];
+      for(let i = 0; i< data['num']; i++){
+        data['route_'+String(i)]['route_lights'] = data['route_'+String(i)]['route_lights'].map(position => positionData(position));  
+        data['route_'+String(i)]['route'] = data['route_'+String(i)]['route'].map(position => new window.google.maps.LatLng(position));
+        routeLights.push(data['route_'+String(i)]['route_lights']);
+        routes.push(data['route_'+String(i)]['route'])
+      }
+      console.log(data);
+      console.log(routeLights);
+      console.log(routes);
+
       setRouteData({
         
-        routeLights: temp,
-        bounds: data['bounds'],
-        route: data['route'].map(position => new window.google.maps.LatLng(position))
+        routeLights: routeLights,
+        bounds: data['route_'+String(data['best_route_index'])]['bounds'],
+        route: routes,
+        best_route_index: data['best_route_index']
       })
     }).catch((e) => {
       setLoading(false);          
@@ -93,18 +107,58 @@ function Home({lights}) {
       setLoading(false);
       if(response.status === 200) {
      
-          
-
           setPerpendiculars(response.data['perpendiculars'].map(position => new window.google.maps.LatLng(position)));
           setDarkDistances(response.data['dark_spot_distances']);
           setDarkbounds(response.data['dark_route_bounds'])
           setDarkroutes(response.data['dark_routes']);
-          
-        
       }
     })
 
   }
+
+  window.sayHello=function(poleId){
+    console.log(poleId);
+    console.log(poleData[poleId])
+    setPoleInfo(poleData[poleId][0])
+
+  }
+
+  function markerPoleHandler(marker, positions, map){
+
+    
+
+    let pole_ids = []
+    for(let i=0; i<positions.length; i++){
+      pole_ids.push('<button class="poleIdButton" onmouseover="sayHello(' + positions[i]["Unique Pole No."]+')">' + positions[i]["Unique Pole No."] + '</button><br>')
+      
+    }
+    return pole_ids.join("");
+  }
+  
+
+  function onMarkerClickPre(marker, positions, map){
+
+
+    const infowindow = new window.google.maps.InfoWindow({
+
+        content: `<div>
+            <h4> Pole Ids: </h4>
+            <div class = "PoleIds">
+            ${markerPoleHandler(marker, positions, map)}
+            </div>
+               
+        </div>`
+    });
+  
+
+    infowindow.open({
+      anchor: marker,
+      map,
+      shouldFocus: false,
+  })
+  
+   
+  };
 
   function onMarkerClick(marker, position, map) {
 
@@ -134,6 +188,7 @@ function Home({lights}) {
       map,
       shouldFocus: false,
   })
+  
    
   }
 
@@ -168,6 +223,7 @@ function Home({lights}) {
         MAX_THRESH_DARK={MAX_THRESH_DARK}
         MIN_THRESH_ROUTE={MIN_THRESH_ROUTE}
         MAX_THRESH_ROUTE={MAX_THRESH_ROUTE}
+        poleInfo = {poleInfo}
       />
       <Wrapper  
         className="Wrapper"
@@ -186,6 +242,7 @@ function Home({lights}) {
           darkDistances = {showDarkRoute?darkDistances:[]}
           darkbounds = {showDarkRoute?darkbounds:[]}
           onMarkerClick={onMarkerClick}
+          onMarkerClickPre={onMarkerClickPre}
           showLiveData={showLiveData}
           showOtherData={showOtherData}
         />

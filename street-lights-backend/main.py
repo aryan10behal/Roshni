@@ -1,4 +1,3 @@
-
 from audioop import mul
 from cgi import print_environ
 from enum import unique
@@ -149,11 +148,8 @@ def find_perpendiculars(lights_considered, path, start_location, end_location):
             'p2': (0,0),
             'dist': end_location[1],
         })
-    gath = set()
     for a, b, p1, p2 in lights_considered:
         p3 = (a, b)
-        gath.add((p1[0],p1[1]))
-        gath.add((p2[0],p2[1]))
         if p2[0] == p1[0]:
             x = p1[0]
             y = p3[1]
@@ -185,7 +181,7 @@ def find_perpendiculars(lights_considered, path, start_location, end_location):
 
     perpendiculars_list = sorted(perpendiculars, key = lambda i: i['dist'])
     perpendiculars = [{'lat': x['lat'], 'lng': x['lng']} for x in perpendiculars_list]
-    return perpendiculars, perpendiculars_list, gath
+    return perpendiculars, perpendiculars_list
 
 def find_dark_spots(perpendiculars, path, dark_route_threshold):
     j = 0
@@ -242,26 +238,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['Unique Pole No.'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['Unique Pole No.'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['Unique Pole No.'], 'agency': streetlight['Unique Pole No.'][0:2], 'unique_no': streetlight['Unique Pole No.'][7:]} for streetlight in db["streetlights"].find() if streetlight['lng'] and streetlight['lat']]
 IST = pytz.timezone('Asia/Kolkata')
-
-light_coordinates = np.array([[streetlight['lat'], streetlight['lng']] for streetlight in all_lights])
-light_data = {(streetlight['lng'], streetlight['lat']):{'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] , 'Wattage':streetlight['Wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['Unique Pole No.']} for streetlight in all_lights}
-
-
-admin_credentials = {admin['agency']: {'Name': admin['Name'], 'Email': admin['Email'], 'agency': admin['agency'],'Ward_No': admin['Ward_No'], 'zone':admin['zone']} for admin in db["administration-details"].find() if admin['Email']}
 
 
 @app.post("/api/users")
-async def create_user(user: _schemas.UserCreate, db: _orm.Session = Depends(_services.get_db)):
-    db_user = await _services.get_user_by_email(user.email, db)
+async def create_user(new_user: _schemas.UserCreate, db: _orm.Session = Depends(_services.get_db), user: _schemas.User = Depends(_services.get_current_user)):
+    db_user = await _services.get_user_by_email(new_user.email, db)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already in use")
     
-    user = await _services.create_user(user, db)
-    print(user)
+    new_user = await _services.create_user(new_user, db)
+    print(new_user)
     
-    return await _services.create_token(user)
+    # return await _services.create_token(user)
 
 
 @app.post("/api/token")
@@ -333,16 +322,53 @@ async def update_lead(
 async def root():
     return {"message": "Awesome Leads Manager"}
 
+@app.get("/logout")
+async def logout(user: _schemas.User = Depends(_services.get_current_user)):
+    
+    
+
 @app.get("/total_no_of_streetlights")
-def get_total_streetlights(req: Request):
+async def get_total_streetlights(req: Request):
+    all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['_id'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['_id'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['_id'], 'agency': streetlight['_id'][0:2], 'unique_no': streetlight['_id'][7:]} for streetlight in db["streetlights"].find() if streetlight['_id']]
+    ccms_arr={ccms_d['ccms_no']: {'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']} 
+    for light in all_lights:
+        if light['CCMS_no'] in ccms_arr.keys():
+            light['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
+            light['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
+                         
     request_args = dict(req.query_params)
     if 'live' in request_args and request_args['live']:
         return len([light for light in all_lights if light['Unique Pole No.'] != ''])
     else:
         return len(all_lights)
 
+@app.get("/total_pages")
+async def get_total_pages(req: Request):
+    all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['_id'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['_id'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['_id'], 'agency': streetlight['_id'][0:2], 'unique_no': streetlight['_id'][7:]} for streetlight in db["streetlights"].find() if streetlight['_id']]
+    ccms_arr={ccms_d['ccms_no']: {'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']} 
+    for light in all_lights:
+        if light['CCMS_no'] in ccms_arr.keys():
+            light['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
+            light['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
+                         
+    request_args = dict(req.query_params)
+    page_size = 10000
+    if 'live' in request_args and request_args['live']:
+        total_lights = len([light for light in all_lights if light['Unique Pole No.'] != ''])
+        if total_lights%page_size == 0:
+            return total_lights//page_size
+        return total_lights//page_size + 1
+    else:
+        total_lights = len(all_lights)
+        if total_lights%page_size == 0:
+            return total_lights//page_size
+        return total_lights//page_size + 1
+
 @app.get("/streetlights")
-def get_streetlights(req: Request):
+async def get_streetlights(req: Request):
+
+    all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['_id'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['_id'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['_id'], 'agency': streetlight['_id'][0:2], 'unique_no': streetlight['_id'][7:]} for streetlight in db["streetlights"].find() if streetlight['_id']]
+    
     request_args = dict(req.query_params)
     if 'live' in request_args:
         only_live = int(request_args['live'])
@@ -365,8 +391,6 @@ def get_streetlights(req: Request):
         if light['CCMS_no'] in ccms_arr.keys():
             light['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
             light['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
-            light_data[(light['lng'], light['lat'])]['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
-            light_data[(light['lng'], light['lat'])]['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
                           
     end = timer()
     response = [light for light in all_lights if not only_live or light['Unique Pole No.'] != '']
@@ -378,6 +402,19 @@ def get_streetlights(req: Request):
 
 @app.get("/route")
 def get_route(req: Request):
+
+    all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['_id'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['_id'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['_id'], 'agency': streetlight['_id'][0:2], 'unique_no': streetlight['_id'][7:]} for streetlight in db["streetlights"].find() if streetlight['_id']]    
+    light_coordinates = np.array([[streetlight['lat'], streetlight['lng']] for streetlight in all_lights])
+    light_data = {(streetlight['lng'], streetlight['lat']):{'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] , 'Wattage':streetlight['Wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['Unique Pole No.']} for streetlight in all_lights}
+    ccms_arr={ccms_d['ccms_no']: {'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']} 
+    for light in all_lights:
+        if light['CCMS_no'] in ccms_arr.keys():
+            light['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
+            light['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
+            light_data[(light['lng'], light['lat'])]['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
+            light_data[(light['lng'], light['lat'])]['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
+                        
+
     lights_considered = []
     request_args = dict(req.query_params)
     source = request_args['source']
@@ -394,14 +431,7 @@ def get_route(req: Request):
 
 
 
-    # light_distance_from_path = 10
-    # dark_route_threshold = 100
-    # conversion to perpendicular to line distance..
-    # Equation Y =  *X - 1.263
-    # X = 9.000712452*10^-6 y  +  1.143801869731*10^-5
-
     distance_from_path = (9.000712452*light_distance_from_path + 11.43801869731)/1000000
-
     directions_api_response = maps.directions(source, destination, alternatives=True)
 
     print("number of response = ", len(directions_api_response))
@@ -419,7 +449,7 @@ def get_route(req: Request):
 
         start_location = [directions_api_response[route_num]['legs'][0]['start_location'], 0]
         end_location = [directions_api_response[route_num]['legs'][0]['end_location'], directions_api_response[route_num]['legs'][0]['distance']['value']]
-
+        
         for direction in directions_api_response[route_num]['legs'][0]['steps']:
             polyline = googlemaps.convert.decode_polyline(direction['polyline']['points'])
             route_duplicate += polyline
@@ -430,6 +460,12 @@ def get_route(req: Request):
             if route_duplicate[i-1] != route_duplicate[i]:
                 route.append(route_duplicate[i])
         
+        
+
+        if len(route) == 1:
+            route.append(route[0])
+
+
         total_distance = 0
         path[(route[0]['lat'], route[0]['lng'])] = total_distance 
         for i in range(1, len(route)):
@@ -458,7 +494,7 @@ def get_route(req: Request):
         
 
         lights_considered = [[x[0], x[1], close_lights[x][0], close_lights[x][1]] for x in close_lights]
-        perpendiculars, perpendiculars_list, gath = find_perpendiculars(lights_considered, path, start_location, end_location)
+        perpendiculars, perpendiculars_list= find_perpendiculars(lights_considered, path, start_location, end_location)
 
         path = sorted(path.items(), key=lambda kv: kv[1])
         
@@ -466,29 +502,31 @@ def get_route(req: Request):
 
 
         dark_route_bounds = directions_api_response[route_num]['bounds']
+        close_lights = [{'lat': x[0], 'lng': x[1], 'CCMS_no':light_data[(x[1],x[0])]['CCMS_no'], 'zone':light_data[(x[1],x[0])]['zone'], 'Type of Light':light_data[(x[1],x[0])]['Type of Light'], 'No. Of Lights':light_data[(x[1],x[0])]['No. Of Lights'], 'Ward No.':light_data[(x[1],x[0])]['Ward No.'] , 'Wattage':light_data[(x[1],x[0])]['Wattage'], 'Connected Load':light_data[(x[1],x[0])]['Connected Load'], 'Actual Load':light_data[(x[1],x[0])]['Actual Load'], 'Unique Pole No.':light_data[(x[1],x[0])]['Unique Pole No.']} for x in close_lights]  
 
-        close_lights = [{'lat': x[0], 'lng': x[1], 'CCMS_no':light_data[(x[1],x[0])]['CCMS_no'], 'zone':light_data[(x[1],x[0])]['zone'], 'Type of Light':light_data[(x[1],x[0])]['Type of Light'], 'No. Of Lights':light_data[(x[1],x[0])]['No. Of Lights'], 'Ward No.':light_data[(x[1],x[0])]['Ward No.'] , 'Wattage':light_data[(x[1],x[0])]['Wattage'], 'Connected Load':light_data[(x[1],x[0])]['Connected Load'], 'Actual Load':light_data[(x[1],x[0])]['Actual Load'], 'Unique Pole No.':light_data[(x[1],x[0])]['Unique Pole No.']} for x in close_lights]
 
         output = {'route': route, 'route_lights': close_lights, 'bounds': directions_api_response[route_num]['bounds'], 'dark_routes': dark_routes, 'dark_route_bounds': dark_route_bounds, 'perpendiculars': perpendiculars, 'dark_spot_distances':  dark_spot_distances, 'indicator': perpendiculars}
         end = timer()
         print("time to compute route: ", end - start) 
 
+        longest_dark_route = 0
         # Choosing best route
-        longest_dark_route = max(dark_spot_distances)
+        if len(dark_spot_distances)!=0:
+            longest_dark_route = max(dark_spot_distances)
         
         if(longest_dark_route < best_route_dark_distance):
             best_route_dark_distance = longest_dark_route
             best_route_index = route_num
 
         all_routes[f'route_{route_num}'] = output
-
     all_routes['best_route_index'] = best_route_index
-    return all_routes['route_0']
+
+    return all_routes
 
 
 @app.get("/addLight")
-def addLight(req: Request):
-    global light_coordinates
+async def addLight(req: Request,  user: _schemas.User = Depends(_services.get_current_user)):
+
     request_args = dict(req.query_params)
     latitude = float(request_args['latitude'])
     longitude = float(request_args['longitude'])
@@ -511,8 +549,8 @@ def addLight(req: Request):
     return
 
 @app.get("/deleteLight")
-def deleteLight(req: Request):
-    global light_coordinates
+async def deleteLight(req: Request, user: _schemas.User = Depends(_services.get_current_user)):
+    
     request_args = dict(req.query_params)
     latitude = float(request_args['latitude'])
     longitude = float(request_args['longitude'])
@@ -537,44 +575,91 @@ def deleteLight(req: Request):
 
 @app.get("/reportLight")
 async def report(req: Request):
+
+    all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['_id'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['_id'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['_id'], 'agency': streetlight['_id'][0:2], 'unique_no': streetlight['_id'][7:]} for streetlight in db["streetlights"].find() if streetlight['_id']]
+    ccms_arr={ccms_d['ccms_no']: {'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']} 
+    for light in all_lights:
+        if light['CCMS_no'] in ccms_arr.keys():
+            light['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
+            light['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']     
+
+    admin_credentials = {admin['agency']: {'Name': admin['Name'], 'Email': admin['Email'], 'agency': admin['agency'],'Ward_No': admin['Ward_No'], 'zone':admin['zone']} for admin in db["administration-details"].find() if admin['Email']}
+
+
     request_args = dict(req.query_params)
     unique_pole_no = str(request_args['unique_pole_no'])
     phone_no = request_args['phone_no']
     report_type = request_args['report_type']
 
     try:
-        record = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] , 'Wattage':streetlight['Wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['Unique Pole No.']} for streetlight in all_lights if streetlight['Unique Pole No.']==unique_pole_no][0]
-        db['reports'].insert_one({'lat': record['lat'], 'lng': record['lng'], 'timestamp': str(datetime.now(IST)),'id': unique_pole_no,'CCMS_no': record['CCMS_no'], 'zone': unique_pole_no[2:4], 'Type_of_Light': record['Type of Light'], 'No_Of_Lights': record['No. Of Lights'], 'Wattage': record['Wattage'], 'Ward_No': unique_pole_no[4:7], 'Connected_Load': record['Connected Load'], 'Actual_load': record['Actual Load'], 'phone_no': phone_no, 'report_type': report_type, 'unique_pole_no' : unique_pole_no, 'agency':unique_pole_no[0:2], 'unique_no': unique_pole_no[7:]})
+        rows = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] , 'Wattage':streetlight['Wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['Unique Pole No.']} for streetlight in all_lights if streetlight['Unique Pole No.']==unique_pole_no]
+        record = rows[0]
+        db['reports'].insert_one({'id': unique_pole_no,'timestamp': str(datetime.now(IST)), 'phone_no': phone_no, 'report_type': report_type, 'unique_pole_no' : unique_pole_no})
+        sender_mail_id = "superuser.roshni.0.0.0@gmail.com"
+        password = "superuser123"
+
+        # initialised to universal mail id
+        concerned_authority_mail = "superuser.receiver.roshni.0.0.0@gmail.com"
+        # password_receiver = "superuser456"
+
+        agency = record['agency']
+
+        # # currently assuming, an admin in a agency lvl...
+        if agency in admin_credentials.keys():
+            concerned_authority_mail = admin_credentials[agency]['Email']
+        
+        lat = record['lat']
+        lng = record['lng']
+        CCMS_no = record['CCMS_no']
+        Zone = record['zone']
+        Type_of_Light = record['Type of Light']
+        No_Of_Lights = record['No. Of Lights']
+        Wattage = record['Wattage']
+        Ward_No =  record['Ward No.'] 
+        Connected_Load = record['Connected Load']
+        Actual_Load = record['Actual Load']
+
+        # # Report Message here..
+        report_message = "\n A light pole has been reported with following details: [Lat, Lng]: " + str(lat) +", "+ str(lng) + ', timestamp: '+ str(datetime.now(IST)) + ', CCMS_no: '+  str(CCMS_no) + ', Zone: '+ Zone+ ', Type_of_Light: '+  Type_of_Light + ', No_Of_Lights: ' + str(No_Of_Lights) + ', Wattage: ' + Wattage + ', Ward_No: ' + Ward_No + ', agency: ' + agency + ', unique_no: ' + unique_pole_no  + ', Connected Load: ' + str(Connected_Load) + ', Actual Load: '+ str(Actual_Load) + '|| Reported by: Phone No: ' + phone_no + 'Report Type: ' + report_type
+        subject = "Light Reported"
+        message = 'Subject: {}\n\n{}'.format(subject, report_message)
+        port = 587 # For starttls
+        smtp_server = "smtp.gmail.com"
+
+        context = ssl.create_default_context()
+        with smtplib.SMTP(smtp_server, port) as server:
+            server.ehlo()
+            server.starttls(context = context)
+            server.ehlo()
+            server.login(sender_mail_id, password)
+            server.sendmail(sender_mail_id, concerned_authority_mail, message)
+            print("Admin notified by mail!")
     except Exception as e:
         print(e)
-    #print(list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp'], 'id':report['id'], 'CCMS_no': report['CCMS_no'], 'zone': report['zone'], 'Type_of_Light': report['Type_of_Light'], 'No_Of_Lights': report['No_Of_Lights'], 'Wattage': report['Wattage'], 'Ward_No': report['Ward_No'], 'Connected Load': ['Connected_Load'], 'Actual Load': report['Actual_load'], 'Phone No': report['phone_no'], 'Report Type': report['report_type'], 'unique_pole_no' : report['unique_pole_no'], 'agency':report['agency'], 'unique_no': report['unique_no']}, db['reports'].find())))
     finally:
-        return list(map(lambda report: {'lat': report['lat'], 'lng': report['lng'], 'timestamp': report['timestamp'], 'id':report['id'], 'CCMS_no': report['CCMS_no'], 'zone': report['zone'], 'Type_of_Light': report['Type_of_Light'], 'No_Of_Lights': report['No_Of_Lights'], 'Wattage': report['Wattage'], 'Ward_No': report['Ward_No'], 'Connected Load': report['Connected_Load'], 'Actual Load': report['Actual_load'], 'Phone No': report['phone_no'], 'Report Type': report['report_type'], 'unique_pole_no' : report['unique_pole_no'], 'agency':report['agency'], 'unique_no': report['unique_no']}, db['reports'].find()))
-    
+        reported_list = {report['unique_pole_no']: {'timestamp': report['timestamp'], 'id':report['id'], 'Phone No': report['phone_no'], 'Report Type': report['report_type'], 'unique_pole_no' : report['unique_pole_no']} for report in db['reports'].find()}
+        reported_list = [{'lng': reported_light['lng'], 'lat': reported_light['lat'], 'timestamp': reported_list[reported_light['Unique Pole No.']]['timestamp'], 'id':reported_list[reported_light['Unique Pole No.']]['id'],  'CCMS_no': reported_light['CCMS_no'], 'zone':reported_light['zone'], 'Type_of_Light':reported_light['Type of Light'], 'No_Of_Lights':reported_light['No. Of Lights'], 'Wattage':reported_light['Wattage'], 'Ward_No': reported_light['Ward No.'], 'Connected Load':reported_light['Connected Load'], 'Actual Load':reported_light['Actual Load'], 'unique_pole_no':reported_light['Unique Pole No.'], 'agency': reported_light['agency'], 'Phone No': reported_list[reported_light['Unique Pole No.']]['Phone No'], 'Report Type': reported_list[reported_light['Unique Pole No.']]['Report Type'],'unique_no': reported_light['unique_no']} for reported_light in all_lights if reported_light['Unique Pole No.'] in reported_list.keys()]
+        return reported_list
  
 
 
 @app.get("/report")
 async def report(req: Request):
+
+    all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['_id'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['_id'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['_id'], 'agency': streetlight['_id'][0:2], 'unique_no': streetlight['_id'][7:]} for streetlight in db["streetlights"].find() if streetlight['_id']]
+    ccms_arr={ccms_d['ccms_no']: {'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']} 
+    for light in all_lights:
+        if light['CCMS_no'] in ccms_arr.keys():
+            light['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
+            light['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
+        
+    admin_credentials = {admin['agency']: {'Name': admin['Name'], 'Email': admin['Email'], 'agency': admin['agency'],'Ward_No': admin['Ward_No'], 'zone':admin['zone']} for admin in db["administration-details"].find() if admin['Email']}
+
     request_args = dict(req.query_params)
     print(request_args)
-    # request_args = await req.json()
-    # print(request_args)
-    # lat = float(request_args['lat'])
-    # lng = float(request_args['lng'])
-    # CCMS_no = request_args['CCMS_no']
-    # Zone = request_args['zone']
-    # Type_of_Light = request_args['Type_of_Light']
-    # No_Of_Lights = request_args['No_Of_Lights']
-    # Ward_No = request_args['Ward_No']
-    # Wattage= request_args['Wattage']
-    # Connected_Load= request_args['Connected_Load']
-    # Actual_load=request_args['Actual_load']
     unique_pole_no = str(request_args['unique_pole_no'])
     phone_no = str(request_args['phone_no'])
     report_type = str(request_args['report_type'])
-    # # agency = request_args['agency']
-    # # unique_no = request_args['unique_no']
 
     try:
         rows = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'agency':streetlight['agency'], 'unique_no':streetlight['unique_no'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] , 'Wattage':streetlight['Wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['Unique Pole No.']} for streetlight in all_lights if streetlight['Unique Pole No.']==unique_pole_no]
@@ -625,19 +710,41 @@ async def report(req: Request):
     except Exception as e:
         print("error message: ", e)
 
-    return list(map(lambda report: {'timestamp': report['timestamp'], 'id':report['id'], 'Phone No': report['phone_no'], 'Report Type': report['report_type'], 'unique_pole_no' : report['unique_pole_no']}, db['reports'].find()))
- 
-@app.get("/reports")
-def get_reports():
+    reported_list = {report['unique_pole_no']: {'timestamp': report['timestamp'], 'id':report['id'], 'Phone No': report['phone_no'], 'Report Type': report['report_type'], 'unique_pole_no' : report['unique_pole_no']} for report in db['reports'].find()}
+    reported_list = [{'lng': reported_light['lng'], 'lat': reported_light['lat'], 'timestamp': reported_list[reported_light['Unique Pole No.']]['timestamp'], 'id':reported_list[reported_light['Unique Pole No.']]['id'],  'CCMS_no': reported_light['CCMS_no'], 'zone':reported_light['zone'], 'Type_of_Light':reported_light['Type of Light'], 'No_Of_Lights':reported_light['No. Of Lights'], 'Wattage':reported_light['Wattage'], 'Ward_No': reported_light['Ward No.'], 'Connected Load':reported_light['Connected Load'], 'Actual Load':reported_light['Actual Load'], 'unique_pole_no':reported_light['Unique Pole No.'], 'agency': reported_light['agency'], 'Phone No': reported_list[reported_light['Unique Pole No.']]['Phone No'], 'Report Type': reported_list[reported_light['Unique Pole No.']]['Report Type'],'unique_no': reported_light['unique_no']} for reported_light in all_lights if reported_light['Unique Pole No.'] in reported_list.keys()]
+    return reported_list
 
+@app.get("/reports")
+async def get_reports(user: _schemas.User = Depends(_services.get_current_user)):
+
+    all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['_id'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['_id'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['_id'], 'agency': streetlight['_id'][0:2], 'unique_no': streetlight['_id'][7:]} for streetlight in db["streetlights"].find() if streetlight['_id']]
+    ccms_arr={ccms_d['ccms_no']: {'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']} 
+    for light in all_lights:
+        if light['CCMS_no'] in ccms_arr.keys():
+            light['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
+            light['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
+        
     reported_list = {report['unique_pole_no']: {'timestamp': report['timestamp'], 'id':report['id'], 'Phone No': report['phone_no'], 'Report Type': report['report_type'], 'unique_pole_no' : report['unique_pole_no']} for report in db['reports'].find()}
     reported_list = [{'lng': reported_light['lng'], 'lat': reported_light['lat'], 'timestamp': reported_list[reported_light['Unique Pole No.']]['timestamp'], 'id':reported_list[reported_light['Unique Pole No.']]['id'],  'CCMS_no': reported_light['CCMS_no'], 'zone':reported_light['zone'], 'Type_of_Light':reported_light['Type of Light'], 'No_Of_Lights':reported_light['No. Of Lights'], 'Wattage':reported_light['Wattage'], 'Ward_No': reported_light['Ward No.'], 'Connected Load':reported_light['Connected Load'], 'Actual Load':reported_light['Actual Load'], 'unique_pole_no':reported_light['Unique Pole No.'], 'agency': reported_light['agency'], 'Phone No': reported_list[reported_light['Unique Pole No.']]['Phone No'], 'Report Type': reported_list[reported_light['Unique Pole No.']]['Report Type'],'unique_no': reported_light['unique_no']} for reported_light in all_lights if reported_light['Unique Pole No.'] in reported_list.keys()]
     return reported_list
 
 @app.get("/report_region")
 def report_region(req: Request):
-    global light_coordinates
-    global light_data
+    
+    all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['_id'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['_id'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['_id'], 'agency': streetlight['_id'][0:2], 'unique_no': streetlight['_id'][7:]} for streetlight in db["streetlights"].find() if streetlight['_id']]    
+    light_coordinates = np.array([[streetlight['lat'], streetlight['lng']] for streetlight in all_lights])
+    light_data = {(streetlight['lng'], streetlight['lat']):{'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['zone'], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.':streetlight['Ward No.'] , 'Wattage':streetlight['Wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['Unique Pole No.']} for streetlight in all_lights}
+    ccms_arr={ccms_d['ccms_no']: {'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']} 
+    for light in all_lights:
+        if light['CCMS_no'] in ccms_arr.keys():
+            light['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
+            light['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
+            light_data[(light['lng'], light['lat'])]['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
+            light_data[(light['lng'], light['lat'])]['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
+                        
+    admin_credentials = {admin['agency']: {'Name': admin['Name'], 'Email': admin['Email'], 'agency': admin['agency'],'Ward_No': admin['Ward_No'], 'zone':admin['zone']} for admin in db["administration-details"].find() if admin['Email']}
+
+
     request_args = dict(req.query_params)
     center = request_args['center']
     print(request_args)
@@ -657,13 +764,10 @@ def report_region(req: Request):
         all_agencies = set()
         # lights_to_be_reported = [{'lat': x[0], 'lng': x[1], 'CCMS_no':light_data[(x[1],x[0])]['CCMS_no'], 'zone':light_data[(x[1],x[0])]['zone'], 'Type of Light':light_data[(x[1],x[0])]['Type of Light'], 'No. Of Lights':light_data[(x[1],x[0])]['No. Of Lights'], 'Ward No.':light_data[(x[1],x[0])]['Ward No.'] , 'Wattage':light_data[(x[1],x[0])]['Wattage'], 'Connected Load':light_data[(x[1],x[0])]['Connected Load'], 'Actual Load':light_data[(x[1],x[0])]['Actual Load']} for x in lights]
         for x in lights:
-            # db['reports'].insert_one({'lat': x[0], 'lng': x[1], 'timestamp': str(datetime.now(IST)),'id': light_data[(x[1],x[0])]['Unique Pole No.'],'CCMS_no': light_data[(x[1],x[0])]['CCMS_no'], 'zone': light_data[(x[1],x[0])]['zone'] if light_data[(x[1],x[0])]['Unique Pole No.'] =='' else light_data[(x[1],x[0])]['Unique Pole No.'][2:4] , 'Type_of_Light': light_data[(x[1],x[0])]['Type of Light'], 'No_Of_Lights': light_data[(x[1],x[0])]['No. Of Lights'], 'Wattage': light_data[(x[1],x[0])]['Wattage'], 'Ward_No': light_data[(x[1],x[0])]['Ward No.'] if light_data[(x[1],x[0])]['Unique Pole No.']=='' else light_data[(x[1],x[0])]['Unique Pole No.'][4:7] , 'Connected_Load': light_data[(x[1],x[0])]['Connected Load'], 'Actual_load': light_data[(x[1],x[0])]['Actual Load'], 'unique_pole_no' : light_data[(x[1],x[0])]['Unique Pole No.'], 'agency':light_data[(x[1],x[0])]['Unique Pole No.'][0:2] if light_data[(x[1],x[0])]['Unique Pole No.']!='' else '', 'unique_no': light_data[(x[1],x[0])]['Unique Pole No.'][7:] if light_data[(x[1],x[0])]['Unique Pole No.']!='' else '','phone_no': phone_no, 'report_type': report_type})
-            # db['reports'].insert_one({'timestamp': str(datetime.now(IST)),'id': light_data[(x[1],x[0])]['Unique Pole No.'],'unique_pole_no' : light_data[(x[1],x[0])]['Unique Pole No.'], 'agency':light_data[(x[1],x[0])]['Unique Pole No.'][0:2] if light_data[(x[1],x[0])]['Unique Pole No.']!='' else '', 'unique_no': light_data[(x[1],x[0])]['Unique Pole No.'][7:] if light_data[(x[1],x[0])]['Unique Pole No.']!='' else '','phone_no': phone_no, 'report_type': report_type})
             db['reports'].insert_one({'timestamp': str(datetime.now(IST)),'id': light_data[(x[1],x[0])]['Unique Pole No.'],'unique_pole_no' : light_data[(x[1],x[0])]['Unique Pole No.'], 'phone_no': phone_no, 'report_type': report_type})
             light_agency = light_data[(x[1],x[0])]['Unique Pole No.'][0:2] if light_data[(x[1],x[0])]['Unique Pole No.']!='' else ''
             all_agencies.add(light_agency)
-            # db['reports'].insert_one({'id': light_data[(x[1],x[0])]['Unique Pole No.'], 'timestamp': str(datetime.now(IST))0, 'unique_pole_no' : light_data[(x[1],x[0])]['Unique Pole No.'], 'phone_no': phone_no, 'report_type': report_type})
-        
+            
         sender_mail_id = "superuser.roshni.0.0.0@gmail.com"
         password = "superuser123"
 
@@ -697,16 +801,27 @@ def report_region(req: Request):
     except Exception as e:
         print("error message: ", e)
 
+    reported_list = {report['unique_pole_no']: {'timestamp': report['timestamp'], 'id':report['id'], 'Phone No': report['phone_no'], 'Report Type': report['report_type'], 'unique_pole_no' : report['unique_pole_no']} for report in db['reports'].find()}
+    reported_list = [{'lng': reported_light['lng'], 'lat': reported_light['lat'], 'timestamp': reported_list[reported_light['Unique Pole No.']]['timestamp'], 'id':reported_list[reported_light['Unique Pole No.']]['id'],  'CCMS_no': reported_light['CCMS_no'], 'zone':reported_light['zone'], 'Type_of_Light':reported_light['Type of Light'], 'No_Of_Lights':reported_light['No. Of Lights'], 'Wattage':reported_light['Wattage'], 'Ward_No': reported_light['Ward No.'], 'Connected Load':reported_light['Connected Load'], 'Actual Load':reported_light['Actual Load'], 'unique_pole_no':reported_light['Unique Pole No.'], 'agency': reported_light['agency'], 'Phone No': reported_list[reported_light['Unique Pole No.']]['Phone No'], 'Report Type': reported_list[reported_light['Unique Pole No.']]['Report Type'],'unique_no': reported_light['unique_no']} for reported_light in all_lights if reported_light['Unique Pole No.'] in reported_list.keys()]
+    return reported_list
+
 
 @app.get("/resolveReport")
 def resolveReport(req: Request):
+
+    all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['_id'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['_id'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['_id'], 'agency': streetlight['_id'][0:2], 'unique_no': streetlight['_id'][7:]} for streetlight in db["streetlights"].find() if streetlight['_id']]
+    ccms_arr={ccms_d['ccms_no']: {'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']} 
+    for light in all_lights:
+        if light['CCMS_no'] in ccms_arr.keys():
+            light['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
+            light['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
+       
+
     request_args = dict(req.query_params)
     ids = request_args['id']
     comment = request_args['comment']
     print("ids:", ids)
     reported_lights = list(ids.split(','))
-
-    print(*db['reports'].find())
 
     for reported_light in reported_lights:
         print(reported_light)
@@ -726,7 +841,16 @@ def resolveReport(req: Request):
     return reported_list
 
 @app.get("/getResolvedReport")
-def getResolvedReport():
+async def getResolvedReport(user: _schemas.User = Depends(_services.get_current_user)):
+
+    all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['_id'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['_id'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['_id'], 'agency': streetlight['_id'][0:2], 'unique_no': streetlight['_id'][7:]} for streetlight in db["streetlights"].find() if streetlight['_id']]
+    ccms_arr={ccms_d['ccms_no']: {'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']} 
+    for light in all_lights:
+        if light['CCMS_no'] in ccms_arr.keys():
+            light['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
+            light['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
+       
+
     resolved_lights = {report['unique_pole_no']: {'id':report['id'], 'Phone No': report['phone_no'],'timestamp': report['timestamp'], 'resolved_timestamp': report['resolved_timestamp'] ,'Comments': report['Comments'],'Report Type': report['report_type'], 'unique_pole_no' : report['unique_pole_no']} for report in db['resolved-reports'].find()}
     resolved_lights = [{'lng': lights['lng'], 'lat': lights['lat'], 'timestamp': resolved_lights[lights['Unique Pole No.']]['timestamp'],'resolved_timestamp': resolved_lights[lights['Unique Pole No.']]['resolved_timestamp'],'resolved_timestamp': resolved_lights[lights['Unique Pole No.']]['resolved_timestamp'], 'Comments': resolved_lights[lights['Unique Pole No.']]['Comments'],'id':resolved_lights[lights['Unique Pole No.']]['id'],  'CCMS_no': lights['CCMS_no'], 'zone': lights['zone'], 'Type_of_Light': lights['Type of Light'], 'No_Of_Lights': lights['No. Of Lights'], 'Wattage': lights['Wattage'], 'Ward_No': lights['Ward No.'], 'Connected Load':lights['Connected Load'], 'Actual Load': lights['Actual Load'], 'unique_pole_no': lights['Unique Pole No.'], 'agency': lights['agency'], 'Phone No': resolved_lights[lights['Unique Pole No.']]['Phone No'], 'Report Type': resolved_lights[lights['Unique Pole No.']]['Report Type'],'unique_no': lights['unique_no']} for lights in all_lights if lights['Unique Pole No.'] in resolved_lights.keys()]
     return resolved_lights
@@ -741,7 +865,7 @@ def addLightsFile(file: UploadFile = File(...)):
     df_final_latlng = df_final_latlng.drop_duplicates(keep= 'last')
     df_final_latlng = df_final_latlng.dropna()
     temp = df_final_latlng.values.tolist()
-    temp = map(lambda x : {'lat':x[1], 'lng':x[0], 'CCMS_no': x[2], 'zone': x[3], 'Type of Light':x[4], 'No. Of Lights':x[5], 'Ward No.':x[6], 'wattage': x[7],'Connected Load':-1, 'Actual Load':-1, 'Unique Pole No.':x[8] }, temp)
+    temp = map(lambda x : {'lat':x[1], 'lng':x[0], 'CCMS_no': x[2], 'zone': x[3], 'Type of Light':x[4], 'No. Of Lights':x[5], 'Ward No.':x[6], 'wattage': x[7],'Connected Load':-1, 'Actual Load':-1, '_id':x[8] }, temp)
     lampposts += temp
     db_list = []
     for pole in lampposts:
@@ -774,7 +898,7 @@ def deleteLightsFile(file: UploadFile = File(...)):
     df_final_latlng = df_final_latlng.drop_duplicates(keep= 'last')
     df_final_latlng = df_final_latlng.dropna()
     temp = df_final_latlng.values.tolist()
-    temp = map(lambda x : {'lat':x[1], 'lng':x[0], 'CCMS_no': x[2], 'zone': x[3], 'Type of Light':x[4], 'No. Of Lights':x[5], 'Ward No.':x[6], 'wattage': x[7],'Connected Load':-1, 'Actual Load':-1, 'Unique Pole No.':x[8] }, temp)
+    temp = map(lambda x : {'lat':x[1], 'lng':x[0], 'CCMS_no': x[2], 'zone': x[3], 'Type of Light':x[4], 'No. Of Lights':x[5], 'Ward No.':x[6], 'wattage': x[7],'Connected Load':-1, 'Actual Load':-1, '_id':x[8] }, temp)
     lampposts += temp
     db_list = []
 

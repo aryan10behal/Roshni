@@ -2,18 +2,32 @@ import React, { useContext, useState } from "react";
 import env from "react-dotenv";
 import { UserContext } from "../context/UserContext";
 import ErrorMessage from "./ErrorMessage";
+import { FormControlLabel,  TextField, Typography, Radio, RadioGroup, Input, Button } from "@mui/material";
 
-const Register = () => {
+//Importing for login
+import Avatar from '@mui/material/Avatar';
+import CssBaseline from '@mui/material/CssBaseline';
+import Checkbox from '@mui/material/Checkbox';
+import Link from '@mui/material/Link';
+import Grid from '@mui/material/Grid';
+import Box from '@mui/material/Box';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import Container from '@mui/material/Container';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+const theme = createTheme();
+
+function Register({registered, setRegistered}){
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmationPassword, setConfirmationPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [, setToken] = useContext(UserContext);
+  const [token,] = useContext(UserContext);
 
   const submitRegistration = async () => {
     const requestOptions = {
       method: "POST",
-      headers: { "Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json",
+      Authorization: "Bearer " + token,},
       body: JSON.stringify({ email: email, hashed_password: password }),
     };
 
@@ -23,7 +37,9 @@ const Register = () => {
     if (!response.ok) {
       setErrorMessage(data.detail);
     } else {
-      setToken(data.access_token);
+      // setToken(data.access_token);
+      setRegistered("New Admin Registered!! ")
+      console.log("New Admin Registered!! ")
     }
   };
 
@@ -40,56 +56,92 @@ const Register = () => {
 
   return (
     <div className="column">
-      <form className="box" onSubmit={handleSubmit}>
-        <h1 className="title has-text-centered">Register</h1>
-        <div className="field">
-          <label className="label">Email Address</label>
-          <div className="control">
-            <input
+      {registered? <p>New User Registered</p> :(
+      <ThemeProvider theme={theme}>
+      <Container component="main" maxWidth="xs">
+        <CssBaseline />
+        <Box
+          sx={{
+            marginTop: 8,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          <Avatar sx={{ m: 1, bgcolor: '#24a0ed' }}>
+            <LockOutlinedIcon />
+          </Avatar>
+          <Typography component="h1" variant="h5">
+            Sign up
+          </Typography>
+          <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="email"
+              label="Email Address"
+              name="email"
+              autoComplete="email"
+              autoFocus
               type="email"
               placeholder="Enter email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="input"
-              required
+              
             />
-          </div>
-        </div>
-        <div className="field">
-          <label className="label">Password</label>
-          <div className="control">
-            <input
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="password"
+              label="Password"
               type="password"
+              id="password"
+              autoComplete="current-password"
               placeholder="Enter password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="input"
-              required
+
             />
-          </div>
-        </div>
-        <div className="field">
-          <label className="label">Confirm Password</label>
-          <div className="control">
-            <input
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="Confirm password"
+              label="Confirm"
               type="password"
-              placeholder="Enter password"
+              autoComplete="current-password"
+              placeholder="
+              confirm password"
+              className="input"
               value={confirmationPassword}
               onChange={(e) => setConfirmationPassword(e.target.value)}
-              className="input"
-              required
+
             />
-          </div>
-        </div>
-        <ErrorMessage message={errorMessage} />
-        <br />
-        <button className="button is-primary" type="submit">
-          Register
-        </button>
-      </form>
+
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              sx={{ mt: 3, mb: 2 }}
+            >
+              Register
+            </Button>
+          </Box>
+          <ErrorMessage message={errorMessage} />
+        </Box>
+        
+      </Container>
+    </ThemeProvider>
+      
+  )}
     </div>
   );
 };
+
 
 export default Register;
 

@@ -32,42 +32,31 @@ deletedLights = pandas.read_csv('./data/Deleted Lights.csv')
 
 
 for file in csv_files:
-    streetlights_dfs.append(pandas.read_csv(file, dtype={'Unique Pole No.':str}))
+    streetlights_dfs.append(pandas.read_csv(file, dtype={'Unique Pole No.':str, 'Wattage':str}))
 
 for file in excel_files:
-    dfs = pandas.read_excel(file, sheet_name = None, dtype={'Unique Pole No.':str}) # read all sheets
+    dfs = pandas.read_excel(file, sheet_name = None, dtype={'Unique Pole No.':str, 'Wattage':str}) # read all sheets
     for sheet in dfs.keys():
         streetlights_dfs.append(dfs[sheet])
 
 
 df_final = pandas.concat(streetlights_dfs)
-df_final_latlng = df_final[['Longitude', 'Latitude', 'CCMS NO', 'Zone', 'Type of Light', 'No. Of Lights', 'Ward No.' , 'Wattage.1', 'Unique Pole No.']]
-df_final_latlng = df_final_latlng.drop_duplicates(subset=['Longitude', 'Latitude'], keep= 'last')
-df_final_latlng = df_final_latlng.dropna(subset=['Longitude', 'Latitude'])
+df_final_latlng = df_final[['Longitude', 'Latitude', 'CCMS NO', 'Zone', 'Type of Light', 'No. Of Lights', 'Ward No.' , 'Wattage', 'Unique Pole No.']]
+df_final_latlng = df_final_latlng.drop_duplicates(subset=['Unique Pole No.'], keep= 'last')
+df_final_latlng = df_final_latlng.dropna(subset=['Unique Pole No.'])
 
 
 df_final_latlng = pandas.concat([df_final_latlng, deletedLights, deletedLights]).drop_duplicates(keep=False)
-df_final_latlng = df_final_latlng.dropna(subset=['Longitude', 'Latitude'])
+df_final_latlng = df_final_latlng.dropna(subset=['Unique Pole No.'])
 
 df_final_latlng = df_final_latlng.fillna('')
 
 temp = df_final_latlng.values.tolist()
-temp = map(lambda x : {'lat':x[1], 'lng':x[0], 'CCMS_no': x[2], 'zone': x[3], 'Type of Light':x[4], 'No. Of Lights':x[5], 'Ward No.':x[6], 'wattage': x[7],'Connected Load':-1, 'Actual Load':-1, 'Unique Pole No.':x[8] }, temp)
+temp = map(lambda x : {'lat':x[1], 'lng':x[0], 'CCMS_no': x[2], 'zone': x[3], 'Type of Light':x[4], 'No. Of Lights':x[5], 'Ward No.':x[6], 'wattage': x[7],'Connected Load':-1, 'Actual Load':-1, '_id':x[8] }, temp)
 lampposts += temp
-
-# for file in files:
-#     df = pandas.read_csv(file)
-#     df = df[['Longitude', 'Latitude']]
-#     df = df.dropna()
-#     temp = df.values.tolist()
-#     temp = map(lambda x : {'lng': x[0], 'lat': x[1]}, temp)
-#     lampposts += temp
-
-
-
 streetlights.insert_many(lampposts)
 
-print(sum([1 for x in streetlights.find()]))
+print("Total lights uploaded: ", sum([1 for x in streetlights.find()]))
 
 for x in streetlights.find()[:10]:
     print(x)

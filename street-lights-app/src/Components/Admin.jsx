@@ -1,8 +1,7 @@
-import React from "react";
+import React, { useState, useContext } from "react";
 import Button from '@mui/material/Button';
-import { Checkbox, CircularProgress, FormControlLabel, Slider, TextField, Typography, IconButton, Radio, RadioGroup, Input, Label } from "@mui/material";
+import { FormControlLabel,  TextField, Typography, Radio, RadioGroup, Input } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
-import { useState } from "react";
 import env from "react-dotenv";
 import '../App.scss';
 import Dialog from '@mui/material/Dialog';
@@ -12,35 +11,166 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import { Wrapper } from "@googlemaps/react-wrapper";
 import Map from "./Map";
+import { UserContext } from "../context/UserContext";
+import ErrorMessage from "./ErrorMessage";
+import Register from "./Register";
 
+
+//Importing for login
+import Avatar from '@mui/material/Avatar';
+import CssBaseline from '@mui/material/CssBaseline';
+import Checkbox from '@mui/material/Checkbox';
+import Link from '@mui/material/Link';
+import Grid from '@mui/material/Grid';
+import Box from '@mui/material/Box';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import Container from '@mui/material/Container';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+const theme = createTheme();
 
 function Admin({setLights}) {    
 
     const [zoom, setZoom] = useState(11);
     const [center, setCenter] = useState({lat: 28.6,lng: 77.15});
 
-    const axios = require('axios');
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [errorMessage, setErrorMessage] = useState("");
+    const [token, setToken] = useContext(UserContext);
 
-    function addLight(){
-        if(!addLightLat || !addLightLong) return;
-        axios.get(env.BACKEND + `/addLight`, {
-            params: {
-              latitude: addLightLat,
-              longitude: addLightLong
-            },
-          })
-          setLights([]);
+    const [registerUser, setRegisterUser] = useState(null);
+    const [registered, setRegistered] = useState(null);
+
+    // Login Admin
+    const submitLogin = async () => {
+        const requestOptions = {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: JSON.stringify(
+            `grant_type=&username=${email}&password=${password}&scope=&client_id=&client_secret=`
+        ),
+        };
+
+        const response = await fetch(env.BACKEND + "/api/token", requestOptions);
+        const data = await response.json();
+
+    
+        if (!response.ok) {
+        setErrorMessage(data.detail);
+        } else {
+        setToken(data.access_token);
+        }
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        submitLogin();
+    };
+
+    // Logout Admin
+    const submitLogout = async () => {
+        const requestOptions = {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: JSON.stringify(
+            `grant_type=&username=${email}&password=${password}&scope=&client_id=&client_secret=`
+        ),
+        };
+
+        const response = await fetch(env.BACKEND + "/api/token", requestOptions);
+        const data = await response.json();
+
+    
+        if (!response.ok) {
+        setErrorMessage(data.detail);
+        } else {
+        setToken(data.access_token);
+        }
+    };
+
+
+    const handleLogOut = (e) => {
+        e.preventDefault();
+        console.log("Yeah I am in!!")
+        setToken(null)
+        setReports(null)
+        setRegisterUser(null)
+        setAddStreetLight(false) 
+        setDeleteStreetLight(false)
+        setShowReports(false)
+        setShowResolvedReports(false)
+        setShowMap(false)
     }
 
-    function deleteLight(){
-        if(!deleteLightLat || !deleteLightLong) return;
-        axios.get(env.BACKEND + `/deleteLight`, {
+    const handleRegisterUser = (e) => {
+        e.preventDefault();
+        console.log("Yeah I am in for Register!!")
+        setRegisterUser("Registering new User")
+    }
+    
+    const handleDoneRegisteration = (e) => {
+        e.preventDefault();
+        setRegisterUser(null)
+        setRegistered(null)
+    }
+
+     const addLight = async() => {
+        if(!addLightLat || !addLightLong) return;
+
+        const requestOptions = {
+            method: "POST",
+            headers: { "Content-Type": "application/json",
+            Authorization: "Bearer " + token,},
             params: {
-              latitude: deleteLightLat,
-              longitude: deleteLightLong
-            },
-          })
-          setLights([]);
+                latitude: addLightLat,
+                longitude: addLightLong
+              },
+          };   
+          const response = await fetch(env.BACKEND + `/addLight`, requestOptions);
+          const data = await response.json();
+      
+          if (!response.ok) {
+            setErrorMessage(data.detail);
+          } else {
+            setLights([])
+          }
+
+        // axios.get(env.BACKEND + `/addLight`, {
+        //     params: {
+        //       latitude: addLightLat,
+        //       longitude: addLightLong
+        //     },
+        //   })
+        //   setLights([]);
+    };
+
+    const deleteLight = async() => {
+        if(!deleteLightLat || !deleteLightLong) return;
+        // axios.get(env.BACKEND + `/deleteLight`, {
+        //     params: {
+        //       latitude: deleteLightLat,
+        //       longitude: deleteLightLong
+        //     },
+        //   })
+        //   setLights([]);
+
+        const requestOptions = {
+            method: "POST",
+            headers: { "Content-Type": "application/json",
+            Authorization: "Bearer " + token,},
+            params: {
+                latitude: deleteLightLat,
+                longitude: deleteLightLong
+              },
+          };   
+          const response = await fetch(env.BACKEND + `/deleteLight`, requestOptions);
+          const data = await response.json();
+      
+          if (!response.ok) {
+            setErrorMessage(data.detail);
+          } else {
+            setLights([])
+          }
     }
 
     const [addLightLat, setAddLightLat] = useState();
@@ -78,7 +208,7 @@ function Admin({setLights}) {
 
     const handleClose = () => {
         setOpen(false);
-    };
+    }
 
     const changeHandlerAdd = (event) => {
         setSelectedFileAdd(event.target.files[0]);
@@ -99,7 +229,6 @@ function Admin({setLights}) {
             method:"POST",
             body: formData
           }).then(setLights([]));
-         
           
     };
 
@@ -121,8 +250,6 @@ function Admin({setLights}) {
         if(reports_to_resolve.length==0) return;
         setShowDialog(true);
         handleClickOpen();
-
-         
     }
 
     const handleResolveReports=(reports_to_resolve)=>{
@@ -142,26 +269,42 @@ function Admin({setLights}) {
     
     //Fetching reports
     React.useEffect(()=>{
-        if(!reports){
-        fetch(`${env.BACKEND}/reports`)
-        .then((response) => response.json())
-        .then((data) => setReports(data)) ;
-        console.log("hi");
-      
+        const requestOptions = {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: "Bearer " + token,
+                },
+        };
+        const fetchReport = async () => {
+            const reportData = await fetch(`${env.BACKEND}/reports`, requestOptions)
+            const reportDataJson = await reportData.json()
+            setReports(reportDataJson)
         }
 
-    }, [showReports])
+        fetchReport().catch(console.error);
+
+    }, [showReports, token])
 
      //Fetching Resolved reports
      React.useEffect(()=>{
-        
-        fetch(`${env.BACKEND}/getResolvedReport`)
-        .then((response) => response.json())
-        .then((data) => setResolvedReports(data)) ;
       
-        
+        const requestOptions = {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + token,
+            },
+        };
+        const fetchResolvedReport = async () => {
+            const resolveReportData = await fetch(`${env.BACKEND}/getResolvedReport`, requestOptions)
+            const resolveReportDataJson = await resolveReportData.json()
+            setResolvedReports(resolveReportDataJson)
+        }
 
-    }, [showResolvedReports])
+        fetchResolvedReport().catch(console.error);
+
+    }, [showResolvedReports, token])
 
 
 
@@ -243,7 +386,8 @@ function Admin({setLights}) {
 
     return (
         <div className='App-body'>
-        <div className="Input">
+        {token?
+        (<div className="Input">
             <div className="Layers">
             <RadioGroup
                 aria-labelledby="demo-radio-buttons-group-label"
@@ -255,11 +399,93 @@ function Admin({setLights}) {
                 <FormControlLabel value = "showResolvedReports" control={<Radio  />} onChange={(e) => {setShowResolvedReports(true); setAddStreetLight(false); setDeleteStreetLight(false); setShowReports(false); setShowMap(false)}}  label="Show Resolved Reports" />
                 <FormControlLabel value = "showMap" control={<Radio  />} onChange={(e) => {setShowMap(true); setShowResolvedReports(false); setAddStreetLight(false); setDeleteStreetLight(false); setShowReports(false);}}  label="Reported Lights on Map" />
             </RadioGroup>
-                
+
+            {registerUser?
+                 (<div>
+                         <Register registered = {registered} setRegistered={setRegistered}/>
+                         <br />
+                         <Button className="button is-primary" onClick={handleDoneRegisteration}>Back</Button>
+                        
+                 </div>
+                )
+              :(<Button className="button is-primary" onClick={handleRegisterUser} >
+                Register New Admin
+                </Button>)}
+            <br />
+            <Button className="button is-primary" onClick={handleLogOut}>
+                LogOut
+            </Button>  
     
             </div>
-        </div>
-        {addStreetLight?
+        </div>):
+        (
+            
+            <div className="LoginCard">
+                <ThemeProvider theme={theme}>
+      <Container component="main" maxWidth="xs">
+        <CssBaseline />
+        <Box
+          sx={{
+            marginTop: 8,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          <Avatar sx={{ m: 1, bgcolor: '#24a0ed' }}>
+            <LockOutlinedIcon />
+          </Avatar>
+          <Typography component="h1" variant="h5">
+            Sign in
+          </Typography>
+          <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="email"
+              label="Email Address"
+              name="email"
+              autoComplete="email"
+              autoFocus
+              type="email"
+              placeholder="Enter email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="input"
+          
+            />
+            <TextField
+              margin="normal"
+              fullWidth
+              name="password"
+              label="Password"
+              type="password"
+              id="password"
+              autoComplete="current-password"
+              placeholder="Enter password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="input"
+              required
+            />
+           
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              sx={{ mt: 3, mb: 2 }}
+            >
+              Sign In
+            </Button>
+          </Box>
+          <ErrorMessage message={errorMessage} />
+        </Box>
+      </Container>
+    </ThemeProvider>
+    </div>
+        )}
+        {addStreetLight && token?
         (   
             <div className="LayersAdmin">
             <div>
@@ -292,7 +518,7 @@ function Admin({setLights}) {
             
             </div>
         ) : ""}
-        {deleteStreetLight?
+        {deleteStreetLight && token?
         (   
             <div className="LayersAdmin">
             <div>
@@ -323,7 +549,7 @@ function Admin({setLights}) {
             </div>
         ) : ""}
 
-        {showReports?        
+        {showReports && token?        
            (<div>
                 <div className="ReportsTable">
                     <DataGrid 
@@ -348,7 +574,7 @@ function Admin({setLights}) {
             </div>   
         ):""}
 
-        {showResolvedReports?(
+        {showResolvedReports && token?(
             <div className="ReportsTable">
                 <DataGrid 
                 rows={resolvedReports}
@@ -359,7 +585,7 @@ function Admin({setLights}) {
             </div>
         ):""}
 
-        {showMap ? (
+        {showMap && token? (
         <Wrapper  
             className="Wrapper"
             apiKey={env.GOOGLE_MAPS_API_KEY}
@@ -377,7 +603,7 @@ function Admin({setLights}) {
         </Wrapper>
     ) : ""}
         
-        {showDialog?(
+        {showDialog && token?(
             <div>
       <Dialog open={open} onClose={handleClose}>
         <DialogTitle>Resolve Report</DialogTitle>
@@ -402,7 +628,6 @@ function Admin({setLights}) {
         </DialogActions>
       </Dialog>
     </div>):""}
-
         </div>
        
 

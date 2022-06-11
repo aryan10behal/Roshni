@@ -92,3 +92,37 @@ button {
   width:1000px;
   height:650px;
 }
+.LoginCard{
+  margin: auto;
+  margin-top: 5%;
+}
+
+.PoleIds{
+  height: 100px;
+  overflow-y: scroll;
+  border: 0.2px solid black;;
+
+}
+.poleIdButton{
+  // border:1px solid blue;
+  background-color:transparent;
+  outline:none;
+  margin : 3px;
+  color: blue;
+}
+.Selected-Light {
+  margin: 40px 12px;
+  margin-left: 0px;
+  padding: 16px;
+  border: solid grey 1px;
+  border-radius: 8px;
+}
+.PoleInfoHeader{
+  color: darkblue;
+  text-align: center;
+  margin-bottom: 20px;
+}
+.poleIdButton:hover {
+  background-color: #4372AA; /* Green */
+  color: white;
+}

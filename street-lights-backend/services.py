@@ -4,12 +4,17 @@ import jwt as _jwt
 import datetime as _dt
 import sqlalchemy.orm as _orm
 import passlib.hash as _hash
+from dotenv import load_dotenv
+import os
+
+
 
 import database as _database, models as _models, schemas as _schemas
 
 oauth2schema = _security.OAuth2PasswordBearer(tokenUrl="/api/token")
 
-JWT_SECRET = "myjwtsecret"
+JWT_SECRET = str(os.getenv('JWT_SECRET'))
+
 
 
 def create_database():
