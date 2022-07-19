@@ -18,9 +18,9 @@ function App() {
     const [currPage, setCurrPage] = useState(pages[0]);
     const page_component = {
         'Home': <Home lights={lights} poleData={poleData}/>,
-        'Report': <Report lights={lights} />,
+        'Report': <Report lights={lights} poleData={poleData}/>,
         'About': <div></div>,
-        'Admin': <Admin setLights = {setLights} />,
+        'Admin': <Admin setLights = {setLights} poleData={poleData}/>,
     }
 
     function openPage(page) {
@@ -57,7 +57,8 @@ function App() {
               }, {});
 
             var groups = Object.keys(grouped).map(function (key) {
-                return {LatLng: new window.google.maps.LatLng(key), poles: grouped[key]};
+               
+                return {LatLng: grouped[key][0]['LatLng'], poles: grouped[key]};
             });
             
             return groups;
@@ -93,11 +94,11 @@ function App() {
             data.forEach((datum) => {
                 all_data.push(...datum)
             });
-            console.log(all_data);
+  
             
             let temp = all_data.map(position => positionData(position)); 
             let groupedData = groupData(temp);
-            console.log(groupedData);
+            
 
             let grouped = temp.reduce((result, obj) => {
                 if (result[obj['Unique Pole No.']]) {
@@ -109,7 +110,8 @@ function App() {
               }, {});
 
             setPoleData(grouped);
-
+        
+            console.log(grouped)
             setLights(groupedData);
             callback(groupedData);
             setLoading(false);

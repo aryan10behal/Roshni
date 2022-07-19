@@ -6,16 +6,19 @@ myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 
 db = myclient["street-lights-db"]
 streetlights = db["streetlights"]
+loggedInUsers = db["LoggedIn-Users"]
 administration_ids = db["administration-details"]
 ccms = db["ccms"]
 reports = db["reports"]
 resolved_report = db['resolved-reports']
 
 streetlights.drop()
+loggedInUsers.drop()
 administration_ids.drop()
 reports.drop()
 resolved_report.drop()
 ccms.drop()
+
 
 for x in streetlights.find()[:10]:
     print(x)
@@ -42,18 +45,19 @@ for file in excel_files:
 
 df_final = pandas.concat(streetlights_dfs)
 df_final_latlng = df_final[['Longitude', 'Latitude', 'CCMS NO', 'Zone', 'Type of Light', 'No. Of Lights', 'Ward No.' , 'Wattage', 'Unique Pole No.']]
-df_final_latlng = df_final_latlng.drop_duplicates(subset=['Unique Pole No.'], keep= 'last')
-df_final_latlng = df_final_latlng.dropna(subset=['Unique Pole No.'])
+df_final_latlng = df_final_latlng.drop_duplicates(keep= 'last')
+df_final_latlng = df_final_latlng.dropna(subset=['Unique Pole No.','CCMS NO','Latitude','Longitude'])
 
 
 df_final_latlng = pandas.concat([df_final_latlng, deletedLights, deletedLights]).drop_duplicates(keep=False)
-df_final_latlng = df_final_latlng.dropna(subset=['Unique Pole No.'])
+df_final_latlng = df_final_latlng.dropna(subset=['Unique Pole No.','CCMS NO','Latitude','Longitude'])
 
 df_final_latlng = df_final_latlng.fillna('')
 
 temp = df_final_latlng.values.tolist()
-temp = map(lambda x : {'lat':x[1], 'lng':x[0], 'CCMS_no': x[2], 'zone': x[3], 'Type of Light':x[4], 'No. Of Lights':x[5], 'Ward No.':x[6], 'wattage': x[7],'Connected Load':-1, 'Actual Load':-1, '_id':x[8] }, temp)
+temp = map(lambda x : {'lat':x[1], 'lng':x[0], 'CCMS_no': x[2], 'zone': x[3], 'Type of Light':x[4], 'No. Of Lights':x[5], 'Ward No.':x[6], 'wattage': x[7],'Connected Load':-1, 'Actual Load':-1, '_id':x[8]}, temp)
 lampposts += temp
+
 streetlights.insert_many(lampposts)
 
 print("Total lights uploaded: ", sum([1 for x in streetlights.find()]))

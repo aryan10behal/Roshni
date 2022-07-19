@@ -39,6 +39,7 @@ function Register({registered, setRegistered}){
     } else {
       // setToken(data.access_token);
       setRegistered("New Admin Registered!! ")
+      setErrorMessage("New Admin Registered!! ")
       console.log("New Admin Registered!! ")
     }
   };
@@ -49,14 +50,14 @@ function Register({registered, setRegistered}){
       submitRegistration();
     } else {
       setErrorMessage(
-        "Ensure that the passwords match and greater than 5 characters"
+        "Ensure that the passwords match and have greater than 5 characters"
       );
     }
   };
 
   return (
     <div className="column">
-      {registered? <p>New User Registered</p> :(
+      
       <ThemeProvider theme={theme}>
       <Container component="main" maxWidth="xs">
         <CssBaseline />
@@ -136,8 +137,8 @@ function Register({registered, setRegistered}){
         
       </Container>
     </ThemeProvider>
-      
-  )}
+    
+  
     </div>
   );
 };

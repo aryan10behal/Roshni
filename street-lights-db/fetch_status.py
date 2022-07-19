@@ -15,7 +15,7 @@ ccms = db["ccms"]
 
 
 # Add all APIs for live data here
-URLs = ['http://103.42.91.251:32210/eesl/api/getBsesRecords', ' ']
+URLs = ['http://103.42.91.251:32210/eesl/api/getBsesRecords', 'http://103.42.91.252:108/eesl/api/getBsesRecords']
 def fetch():
     all_data = []
     for url in URLs:

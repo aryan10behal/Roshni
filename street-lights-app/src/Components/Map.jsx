@@ -14,13 +14,13 @@ function Map({
   darkroutes,
   darkDistances,
   darkbounds,
-  onMarkerClick,
   onMarkerClickPre,
   showLiveData,
   showOtherData,
   allowReportRegion,
   selectRegion
 }) {
+
   const ref = React.useRef(null);
   const [map, setMap] = React.useState();
   const clusterer = React.useRef();
@@ -42,6 +42,8 @@ function Map({
   }, [ref, map]);
 
   React.useEffect(() => {
+
+   
     if (map) {
       map.setOptions({
         center,
@@ -49,6 +51,8 @@ function Map({
       });
     }
   }, [map, center, zoom]);
+
+  
 
   React.useEffect(() => {
     if(map) {
@@ -82,65 +86,84 @@ function Map({
     }
   }, [map, allowReportRegion])
 
+
+
+
+
+
   // plot heatmap if heatmapData supplied
   React.useEffect(() => {
+    
     if (heatmap.current) heatmap.current.setMap(null);
     if (!heatmapData) return;
+    console.log(heatmapData[0]["LatLng"])
     var heatMapNewData = heatmapData.map(
-      (position) => new window.google.maps.LatLng(position["LatLng"])
+      (position) => position["LatLng"]
     );
+    console.log(heatMapNewData[0])
     heatmap.current = new window.google.maps.visualization.HeatmapLayer({
       map,
       data: heatMapNewData,
+      maxIntensity: 10
+
     });
   }, [map, heatmapData]);
 
+
+
+
+
+
+
+  //CLusters and All Street Lights
   React.useEffect(() => {
     if (clusterer.current) clusterer.current.setMap(null);
 
     if (!clustererData) return;
     var markers = [];
 
-    if (showLiveData) {
-      for (var i = 0; i < clustererData.length; i++) {
-        
-        let entry = clustererData[i]['poles'].length;
-        let position = clustererData[i]['poles'][0];
-        let marker;
+
+    for (var i = 0; i < clustererData.length; i++) {
       
-        if(entry>1){
+      let entry = clustererData[i]['poles'].length;
+      let position = clustererData[i]['poles'][0];
+      let positions = clustererData[i]['poles'];
+      let marker;
+    
+      if(entry>1){
 
-      
-              let positions = clustererData[i]['poles'];
-              marker = new window.google.maps.Marker({
-              position: position["LatLng"],
-              icon: env.BACKEND + "/icon",
-            });
-            // console.log(marker.position.lat(), marker.position.lng());
-            marker.addListener("click", () => onMarkerClickPre(marker, positions, map));
-            markers.push(marker);
+           
+           
+            marker = new window.google.maps.Marker({
+            position: position["LatLng"],
+            icon: env.BACKEND + "/icon_blue",
+          });
+      }
+      else{
         
-          
-        }
-        else{
 
-        
-       
-
-     
-
+        //Data not available
         if (position["Connected Load"] == -1 && position["Actual Load"] == -1) {
-          continue;
-        } else if (
+          marker = new window.google.maps.Marker({
+            position: position["LatLng"],
+            icon: env.BACKEND + "/icon",
+          });
+
+        } 
+        //Almost Not working
+        else if (parseFloat(position["Actual Load"]) ===0 ||
           parseFloat(position["Actual Load"]) /
             parseFloat(position["Connected Load"]) <=
           0.25
         ) {
+
           marker = new window.google.maps.Marker({
             position: position["LatLng"],
             icon: env.BACKEND + "/icon_red",
           });
-        } else if (
+        } 
+        //Almost Working
+        else if (
           parseFloat(position["Actual Load"]) /
             parseFloat(position["Connected Load"]) >=
           0.75
@@ -149,45 +172,25 @@ function Map({
             position: position["LatLng"],
             icon: env.BACKEND + "/icon_green",
           });
-        } else {
-          if (showLiveData) {
+        } 
+
+        //Partially working
+        else {
+          
             marker = new window.google.maps.Marker({
               position: position["LatLng"],
               icon: env.BACKEND + "/icon_yellow",
             });
-          }
-        }
-
-        marker.addListener("click", () => onMarkerClick(marker, position, map));
-        markers.push(marker);
-      }
-    }
-    }
-
-    if (showOtherData) {
-      for (var i = 0; i < clustererData.length; i++) {
-        if (
-          clustererData[i]["Connected Load"] == -1 &&
-          clustererData[i]["Actual Load"] == -1
-        ) {
           
-          let position = clustererData[i];
-          let marker = new window.google.maps.Marker({
-            position: position["LatLng"],
-            icon: env.BACKEND + "/icon",
-          });
-          marker.addListener("click", () =>
-            onMarkerClick(marker, position, map)
-          );
-
-          markers.push(marker);
-   
-        } else {
-          continue;
         }
-      }
+       
     }
+    marker.addListener("click", () => onMarkerClickPre(marker, positions, map));
+    markers.push(marker);
+  }
+    
 
+   
     const interpolatedRenderer = {
       palette: interpolateRgb("red", "green"),
       render: function ({ count, position }, stats) {
@@ -232,6 +235,8 @@ function Map({
 
 
 
+
+
   //plot route, neighbouring streetlights
   React.useEffect(() => {
     if (routePlot.current) {
@@ -246,19 +251,59 @@ function Map({
     }
     if (!routeData) return;
 
+    //For grouping data
+    function groupData(data){
+      let grouped = data.reduce((result, obj) => {
+          if (result[obj.LatLng]) {
+            result[obj.LatLng].push(obj) 
+          } else {
+            result[obj.LatLng] = [obj]
+          }
+          return result
+        }, {});
+
+      var groups = Object.keys(grouped).map(function (key) {
+         
+          return {LatLng: grouped[key][0]['LatLng'], poles: grouped[key]};
+      });
+      
+      return groups;
+
+  }
+
     routePlot.current = {
       polylines : [],
       routeLights: []
     }
-   
+    
+
     for(let i = 0; i<routeData.route.length; i++){
+    
       let polyline = new window.google.maps.Polyline({
         map,
         path: routeData.route[i],
         strokeColor: "Grey",
+        strokeWeight: 7,
       });
-      let routeLight = routeData.routeLights[i].map((position) => {
+      let groupedData = groupData(routeData.routeLights[i]);
+
+      let routeLight = groupedData.map((pos) => {
+        let entry = pos['poles'].length;
+        let position = pos['poles'][0];
+        let positions = pos['poles'];
         let marker;
+
+        if(entry>1){
+
+           
+           
+          marker = new window.google.maps.Marker({
+          position: position["LatLng"],
+          icon: env.BACKEND + "/icon_blue",
+        });
+    }
+    else{
+
         if (
           position["Connected Load"] == -1 &&
           position["Actual Load"] == -1
@@ -295,8 +340,9 @@ function Map({
             icon: env.BACKEND + "/icon_yellow",
           });
         }
+      }
 
-        marker.addListener("click", () => onMarkerClick(marker, position, map));
+        marker.addListener("click", () => onMarkerClickPre(marker, positions, map));
 
         return marker;
       })
@@ -309,6 +355,7 @@ function Map({
       map,
       path: routeData.route[routeData.best_route_index],
       strokeColor: "DodgerBlue",
+      strokeWeight: 7,
     }))
     routePlot.current.A = new window.google.maps.Marker({
       map,
@@ -318,7 +365,7 @@ function Map({
     routePlot.current.B = new window.google.maps.Marker({
       map,
       position: routeData.route[0][routeData.route[0].length - 1],
-      label: "A",
+      label: "B",
     })
    
     

@@ -7,7 +7,9 @@
     display: flex;
     flex-direction: row;
     .Input {
-      width: 300px;
+      width: 320px;
+
+     
       .Layers {
         display: flex;
         flex-direction: column;
@@ -51,9 +53,120 @@
   }
 }
 
-.LayersAdmin{
+
+
+input {
+  margin: 10px;
+}
+button {
+    border: none;
+    padding: 5px 20px;
+}
+.InputOp{
   display: flex;
   flex-direction: column;
+  margin-left: 30px;
+}
+.ReportsTable{
+  width:95%;
+  height:85%;
+}
+.LoginCard{
+  margin: auto;
+  margin-top: 5%;
+}
+.LeftBar{
+  overflow-y: scroll;
+  max-height: 100%;
+  padding: 10px;
+}
+
+
+
+//Infowindow and pole info
+.PoleIds{
+  max-height: 100px;
+  overflow-y: scroll;
+  border: 0.2px solid black;;
+
+}
+.poleIdButton{
+  // border:1px solid blue;
+  background-color:transparent;
+  outline:none;
+  margin : 3px;
+  color: blue;
+}
+.Selected-Light {
+  margin: 40px 12px;
+  margin-left: 0px;
+  padding: 16px;
+  border: solid grey 1px;
+  border-radius: 8px;
+  font-size: 15px;
+  max-width: 70%;
+}
+.PoleInfoHeader{
+  color: darkblue;
+  text-align: center;
+  margin-bottom: 20px;
+}
+.poleIdButton:hover {
+  background-color: #4372AA; 
+  color: white;
+}
+
+
+
+//Admin
+.InputAdmin{
+  background-color: #002244;
+  height: 100%;
+  min-width:300px;
+  padding: 20px;
+  text-align: left;
+ 
+}
+#Admin-App-Body{
+  margin : -32px;
+  height: calc(100vh - 64px);
+}
+.LayersAdmin {
+  display: flex;
+  flex-direction: column;
+  padding: 0 32px 0 0;
+  gap: 10px;
+  text-align: left;
+
+}
+.adminButton{
+  width: 100%;
+  height: 50px;
+  justify-content: left;
+  color: white !important;
+  justify-content: left !important;
+
+}
+.adminButton:hover{
+  background-color: white !important;
+  color:#0076CE !important;
+
+}
+
+.AdminRightWrapper{
+  margin: 30px;
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+  text-align: center;
+}
+.ButtonAdminCrud{
+  margin: 5% 40%;
+  width: 200px;
+}
+.LayersAdminSingleLight{
+  display: flex;
+  flex-direction: row;
   align-items: center;
   .Input-Field {
 
@@ -76,53 +189,13 @@
   }
 }
 
-input {
-  margin: 10px;
-}
-button {
-    border: none;
-    padding: 5px 20px;
-}
-.InputOp{
+.LayersAdminCSV{
   display: flex;
   flex-direction: column;
-  margin-left: 30px;
+  align-items: center;
+  gap: 20px;
 }
-.ReportsTable{
-  width:1000px;
-  height:650px;
-}
-.LoginCard{
-  margin: auto;
-  margin-top: 5%;
-}
+.AdminHeadings{
 
-.PoleIds{
-  height: 100px;
-  overflow-y: scroll;
-  border: 0.2px solid black;;
-
-}
-.poleIdButton{
-  // border:1px solid blue;
-  background-color:transparent;
-  outline:none;
-  margin : 3px;
-  color: blue;
-}
-.Selected-Light {
-  margin: 40px 12px;
-  margin-left: 0px;
-  padding: 16px;
-  border: solid grey 1px;
-  border-radius: 8px;
-}
-.PoleInfoHeader{
-  color: darkblue;
-  text-align: center;
-  margin-bottom: 20px;
-}
-.poleIdButton:hover {
-  background-color: #4372AA; /* Green */
-  color: white;
+  font-size: medium;
 }

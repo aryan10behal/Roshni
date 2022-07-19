@@ -10,3 +10,5 @@ passlib
 bcrypt
 SQLAlchemy
 pyjwt
+firebase_admin
+    

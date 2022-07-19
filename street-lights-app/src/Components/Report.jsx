@@ -1,6 +1,6 @@
 
 import { Alert, Button, Checkbox, IconButton, TextField, FormControlLabel } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Search from "@mui/icons-material/Search";
 import CancelIcon from '@mui/icons-material/Cancel';
 import Map from "./Map";
@@ -16,27 +16,25 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 
 
-function Report({lights}) {    
+function Report({lights, poleData}) {    
 
     const [locality, setLocality] = useState(null);
     const [zoom, setZoom] = useState(11);
     const [center, setCenter] = useState({lat: 28.6,lng: 77.15});
-    const [selectedLight, setSelectedLight] = useState(null);
-    const [reports, setReports] = useState([])
+    const [selectedLight, setSelectedLight] = useState([]);
     const [reportRegion, setReportRegion] = useState(false);
     const [reportedCircle, setReportedCircle] = useState(null);
+    const [reports, setReports] = useState([]);
+      //For seeing current pole data
+    const [poleInfo, setPoleInfo]= useState([]);
+    const [reportFlag, setReportFlag] = useState(false);
+
 
 
     const [open, setOpen] = useState(false);
     const [toast, setToast] = useState("");
 
-    useEffect(() => {
-        if(reports == null) {
-            fetch(`${env.BACKEND}/reports`)
-            .then((response) => response.json())
-            .then((data) => setReports(data)) 
-        }
-    }, [reports])
+  
 
     function zoomToLocality() {
         fetch(`${env.BACKEND}/place?query=${locality}`)
@@ -49,33 +47,52 @@ function Report({lights}) {
         });
     }
 
-    function onMarkerClick(marker, position, map) {
-        let id = `${marker.position.lat()},${marker.position.lng()}`;
+    window.poleInfoHandlerReport=function(poleId){
+
+      
+        setPoleInfo(poleData[poleId][0])
+        setReportFlag(false);
+        setSelectedLight(poleData[poleId][0]);
+        
+    
+      }
+    
+      function markerPoleHandler(marker, positions, map){
+    
+        let pole_ids = []
+        for(let i=0; i<positions.length; i++){
+          pole_ids.push('<button class="poleIdButton" onClick="poleInfoHandlerReport('+"'"+positions[i]["Unique Pole No."]+"'"+')">' + positions[i]["Unique Pole No."] + '</button><br>')
+          
+        }
+        return pole_ids.join("");
+      }
+      
+    
+      function onMarkerClickPre(marker, positions, map){
+      
+    
         const infowindow = new window.google.maps.InfoWindow({
+    
             content: `<div>
-            <div>Latitude: ${marker.position.lat()}</div>
-            <div>Longitude: ${marker.position.lng()}</div>
-            <div>CCMS No.: ${position['CCMS NO']}</div>
-            <div>Type of Light: ${position['Type of Light']}</div>
-            <div>No. Of Lights: ${position['No. Of Lights']}</div>
-            <div>Wattage: ${parseInt(position['Wattage'])}</div>
-            <div>Connected Load: ${position['Connected Load']!=-1?position['Connected Load']:0}</div>
-            <div>Actual Load: ${position['Actual Load']!=-1?position['Actual Load']:0}</div>
-            <div>status: ${marker.status ? "Not Working" : "Working"}</div>
-            <div>Unique Pole No.: ${position['Unique Pole No.']}</div>
-            <div>Agency: ${position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(0,2):''}</div>
-            <div>Zone: ${position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(2,4):position['Zone']}</div>
-            <div>Ward No.: ${position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(4,7):position['Ward No.']}</div>
-            <div>Unique No.: ${position['Unique Pole No.']?position['Unique Pole No.'].toString().slice(7,):""}</div>
-            </div>`,
+                <h4> Pole Ids: </h4>
+                <div class = "PoleIds">
+                ${markerPoleHandler(marker, positions, map)}
+                </div>
+                   
+            </div>`
         });
+      
+    
         infowindow.open({
-            anchor: marker,
-            map,
-            shouldFocus: false,
-        })
-        setSelectedLight(position['Unique Pole No.']);
-    }
+          anchor: marker,
+          map,
+          shouldFocus: false,
+      })
+      
+       
+      };
+
+  
 
 
     function selectRegion(circle) {
@@ -112,7 +129,7 @@ function Report({lights}) {
                     {reportRegion ? <Button style={{marginRight:'4px'}} variant="outlined" color="success" disabled={!reportedCircle} onClick={() => setOpen(true)}> <GridCheckCircleIcon /> </Button> : ""}
                     {reportRegion ? <Button style={{marginRight:'4px'}} variant="outlined" color="error" onClick={() => {setReportRegion(false);setReportedCircle(null)}}> <CancelIcon /> </Button> : ""}
                 </div>
-                <SelectedLight light={selectedLight} reports={reports} setReports={setReports} />
+                <SelectedLight light={selectedLight} reportFlag={reportFlag} setReportFlag={setReportFlag} reports={reports} setReports={setReports} />
 
                 {open ? <ReportForm report={report} open={open} setOpen={setOpen} setToast={toast} /> : ""}
             </div>
@@ -128,7 +145,7 @@ function Report({lights}) {
                 center={center}
                 zoom={zoom}
                 clustererData={lights}
-                onMarkerClick={onMarkerClick}
+                onMarkerClickPre={onMarkerClickPre}
                 showLiveData={true}
                 showOtherData={true}
                 allowReportRegion={reportRegion}
@@ -141,12 +158,13 @@ function Report({lights}) {
 }
 
 
-function SelectedLight({light, reports, setReports}) {
+function SelectedLight({light, reports, reportFlag, setReportFlag, setReports}) {
+
     const [status, setStatus] = useState(false);
     const [toast, setToast] = useState("");
     const [open, setOpen] = useState(false);
 
-    if(light == null) {
+    if(light.length == 0) {
         return "";
     }
     const REPORT = false;
@@ -162,7 +180,7 @@ function SelectedLight({light, reports, setReports}) {
 
     function reportLight(issue, contact) {
         setStatus(REPORTING)
-        let request = `${env.BACKEND}/report?unique_pole_no=${light}&phone_no=${contact}&report_type=${issue}`
+        let request = `${env.BACKEND}/report?unique_pole_no=${light['Unique Pole No.']}&phone_no=${contact}&report_type=${issue}`
         console.log(request)
         fetch(request)
         .then((response) => {
@@ -171,6 +189,7 @@ function SelectedLight({light, reports, setReports}) {
                 setToast(SuccessToast)
                 response.json().then((data) => {
                     setReports(data);
+                    setReportFlag(true);
                 })
             } else {
                 setToast(FailToast)
@@ -182,23 +201,35 @@ function SelectedLight({light, reports, setReports}) {
     }
 
     let Report = "";
-    if(reports.find((report) => report.lng == light.lng && report.lat == light.lat)) {
-        Report = ReportedButton
-    } else if(status == REPORTING) {
+   
+    if(reportFlag){
+        Report = ReportedButton;
+    }
+    else if(status == REPORTING) {
         Report = Reporting_Button
     } else {
         Report = Report_Button
     }
 
     return (<div className="Selected-Light">
-        <div>Latitude: {light.lat}</div>
-        <div>Longitude: {light.lng}</div>
-        <div>Current Status: {light.status ? "Not Working" : "Working"}</div>
+        <div>Latitude: {light['LatLng'].lat()}</div>
+            <div>Longitude: {light['LatLng'].lng()}</div>
+            <div>CCMS No.: {light['CCMS NO']}</div>
+            <div>Type of Light: {light['Type of Light']}</div>
+            <div>No. Of Lights: {light['No. Of Lights']}</div>
+            <div>Wattage: {parseInt(light['Wattage'])}</div>
+            <div>Connected Load: {light['Connected Load']!=-1?light['Connected Load']:0}</div>
+            <div>Actual Load: {light['Actual Load']!=-1?light['Actual Load']:0}</div>
+            <div>Unique Pole No.: {light['Unique Pole No.']}</div>
+            <div>Agency: {light['Unique Pole No.']?light['Unique Pole No.'].toString().slice(0,2):''}</div>
+            <div>Zone: {light['Unique Pole No.']?light['Unique Pole No.'].toString().slice(2,4):light['Zone']}</div>
+            <div>Ward No.: {light['Unique Pole No.']?light['Unique Pole No.'].toString().slice(4,7):light['Ward No.']}</div>
+            <div>Unique No.: {light['Unique Pole No.']?light['Unique Pole No.'].toString().slice(7,):""}</div>
         <div className="Report-Button">
             {Report}
         </div>
         {open ? <ReportForm report={reportLight}  open={open} setOpen={setOpen} setToast={setToast} /> : ""}
-        {toast}
+        {reportFlag?toast:""}
     </div>)
 }
 
@@ -227,7 +258,7 @@ function ReportForm({report, open, setOpen, setToast}) {
     let CheckFormToast = (<Alert severity="error">Please choose the problem or specify in other. Mention the mail id</Alert>)
 
     function getIssueAndContact() {
-        console.log(report_1, report_2, report_3, report_4)
+       
         if(!report_1 && !report_2 && !report_3 && report_4 == "") {
             setToast(CheckFormToast);
             return;
@@ -244,7 +275,7 @@ function ReportForm({report, open, setOpen, setToast}) {
         }
         report_type+=report_4
 
-        console.log(report_type, report_5)
+     
 
         return {issue: report_type, contact: report_5}
     }
