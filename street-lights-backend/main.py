@@ -79,10 +79,15 @@ from firebase_admin import credentials, messaging
 #     fm = FastMail(conf)
 #     await fm.send_message(message)
 
-cred = credentials.Certificate("./serviceAccountKey.json")
-firebase_admin.initialize_app(cred)
+
+
+# /////////////////////////
+# All utility functions for finding street light and dark stretches on route
 
 def haversine(lat1, lon1, lat2, lon2):
+    # finds distance between any 2 points when lat, lng for the 2 points given
+    # distance returned in metres
+
     R = 6372.8 # this is in km.  For Earth radius in kilometers 
     lon1 = radians(lon1)
     lon2 = radians(lon2)
@@ -258,18 +263,19 @@ def find_dark_spots(perpendiculars, path, dark_route_threshold):
     return  dark_routes, dark_spot_distance
 
 
+# //////////////////////////////////////////////////////////////////////////////////////////
+# Global initialisations
 
-
+cred = credentials.Certificate("./serviceAccountKey.json")
+firebase_admin.initialize_app(cred)
 
 load_dotenv()
-
 
 GOOGLE_MAPS_API_KEY = os.getenv('GOOGLE_MAPS_API_KEY')
 BACKEND = os.getenv('BACKEND')
 
 maps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
 mongodb = pymongo.MongoClient("mongodb://localhost:27017/")
-
 db = mongodb["street-lights-db"]
 
 app = FastAPI()
@@ -288,6 +294,10 @@ app.add_middleware(
 
 IST = pytz.timezone('Asia/Kolkata')
 
+
+
+# ///////////////////////////////
+# All APIs
 
 @app.post("/api/users")
 async def create_user(new_user: _schemas.UserCreate, db: _orm.Session = Depends(_services.get_db), user: _schemas.User = Depends(_services.get_current_user)):
@@ -312,19 +322,24 @@ async def generate_token(
 
     token = await _services.create_token(user)
 
+    if form_data.client_secret[0:4] != "null":
+            return dict(status_code=401, detail="Another Admin already Logged in another tab!! Please use that user")
+
     street_light_db = mongodb["street-lights-db"]
-    street_light_db['LoggedIn-Users'].insert_one({'email':str(form_data.username), 'token':str(token['access_token'].decode("utf-8")), 'timestamp': datetime.now(IST),'FCMRegistrationToken': str(form_data.client_id)})
+    if not street_light_db['LoggedIn-Users'].find_one({'email':str(form_data.username)}):
+        street_light_db['LoggedIn-Users'].insert_one({'email':str(form_data.username), 'token':str(token['access_token'].decode("utf-8")), 'timestamp': datetime.now(IST),'FCMRegistrationToken': str(form_data.client_id)})
     return token
 
 @app.get("/logout")
 async def logout(user: _schemas.User = Depends(_services.get_current_user)):
     authenticate_user(user.email)
     email = user.email
+    print("Email to be logged out: ", email)
     street_light_db = mongodb["street-lights-db"]
-    # street_light_db['LoggedIn-Users'].delete_many({'email':form_data.username, 'token':str(form_data.client_secret[:-1])})
     street_light_db['LoggedIn-Users'].delete_many({'email':email})
-    street_light_db['LoggedIn-Users'].delete_many({'timestamp':{'$lte': datetime.now(IST) - timedelta(days=1)}})
+    street_light_db['LoggedIn-Users'].delete_many({'timestamp':{'$lte': datetime.now(IST) - timedelta(minutes=30)}})
     logged_in_user_list = [{'email': logged_in_user['email'],'token':logged_in_user['token'], 'timestamp': logged_in_user['timestamp'], 'FCMRegistrationToken': logged_in_user['FCMRegistrationToken']} for logged_in_user in street_light_db['LoggedIn-Users'].find()]
+    print("Currently Logged In users are: ", logged_in_user_list)
     return {'access_token': None, 'detail':'Logged Out User'}
 
 
@@ -336,7 +351,7 @@ async def get_user(user: _schemas.User = Depends(_services.get_current_user)):
 
 @app.get("/api")
 async def root():
-    return {"message": "Awesome Leads Manager"}    
+    return {"message": "Awesome Login mechanism"}    
     
 
 @app.get("/total_no_of_streetlights")
@@ -432,108 +447,117 @@ def get_route(req: Request):
     lights_considered = []
     request_args = dict(req.query_params)
 
+    if 'source' not in request_args or request_args['source'] == "":
+        raise HTTPException(status_code=401, detail="source missing")
     source = request_args['source']
-    destination = request_args['destination']
 
-    # source = "govindpuri"
-    # destination = "iiitd"
-    # light_distance_from_path = 100
-    # dark_route_threshold = 100
+    if 'destination' not in request_args or request_args['destination'] == "":
+        raise HTTPException(status_code=401, detail="destination missing")
+    destination = request_args['destination']
 
     # in meter
     light_distance_from_path = float(request_args['distanceFromPath'])
     dark_route_threshold = float(request_args['darkRouteThreshold'])
 
 
-
     distance_from_path = (9.000712452*light_distance_from_path + 11.43801869731)/1000000
-    directions_api_response = maps.directions(source, destination, alternatives=True)
+    directions_api_response = dict()
+
+    try:
+        directions_api_response = maps.directions(source, destination, alternatives=True)
+    except:
+        raise HTTPException(status_code=401, detail=" Oops!! Some error occurred. Please check the source/destination..")
 
     print("number of response = ", len(directions_api_response))
 
     all_routes = {'num':len(directions_api_response)}
 
-    best_route_index = 0
-    best_route_dark_distance = 1e9
+    if len(directions_api_response) == 0:
+        raise HTTPException(status_code=401, detail="No route found. Please check the source/destination! ")
 
-    for route_num in range(len(directions_api_response)):
-        print(f"---ROUTE {route_num}---")
+    try:
+        best_route_index = 0
+        best_route_dark_distance = 1e9
+        for route_num in range(len(directions_api_response)):
+            print(f"---ROUTE {route_num}---")
 
-        route_duplicate = []
-        path = dict()
+            route_duplicate = []
+            path = dict()
 
-        start_location = [directions_api_response[route_num]['legs'][0]['start_location'], 0]
-        end_location = [directions_api_response[route_num]['legs'][0]['end_location'], directions_api_response[route_num]['legs'][0]['distance']['value']]
-        
-        for direction in directions_api_response[route_num]['legs'][0]['steps']:
-            polyline = googlemaps.convert.decode_polyline(direction['polyline']['points'])
-            route_duplicate += polyline
+            start_location = [directions_api_response[route_num]['legs'][0]['start_location'], 0]
+            end_location = [directions_api_response[route_num]['legs'][0]['end_location'], directions_api_response[route_num]['legs'][0]['distance']['value']]
+            
+            for direction in directions_api_response[route_num]['legs'][0]['steps']:
+                polyline = googlemaps.convert.decode_polyline(direction['polyline']['points'])
+                route_duplicate += polyline
 
-        route = []
-        route.append(route_duplicate[0])
-        for i in range(1, len(route_duplicate)):
-            if route_duplicate[i-1] != route_duplicate[i]:
-                route.append(route_duplicate[i])
-        
-        
+            route = []
+            route.append(route_duplicate[0])
+            for i in range(1, len(route_duplicate)):
+                if route_duplicate[i-1] != route_duplicate[i]:
+                    route.append(route_duplicate[i])
+            
+            
 
-        if len(route) == 1:
-            route.append(route[0])
-
-
-        total_distance = 0
-        path[(route[0]['lat'], route[0]['lng'])] = total_distance 
-        for i in range(1, len(route)):
-            prev_point = route[i-1] 
-            coordinate = route[i]
-            total_distance += haversine(coordinate['lat'], coordinate['lng'], prev_point['lat'], prev_point['lng'])
-            path[(coordinate['lat'], coordinate['lng'])] = total_distance 
-                
-        close_lights = dict()
-
-        start = timer()
-        for i in range(1, len(route)):
-            p1 = (route[i-1]['lat'], route[i-1]['lng'])
-            p2 = (route[i]['lat'], route[i]['lng'])
-            lights, distances = pointToLineDistance(p1, p2, light_coordinates, distance_from_path)
-            for j in range(len(lights)):
-                current_light = (lights[j][0], lights[j][1]) 
-                if current_light in close_lights.keys():
-                    if close_lights[current_light][2] > distances[j]:
-                        close_lights[current_light] = (p1, p2, distances[j])   
-                else:
-                    close_lights[current_light] = (p1, p2, distances[j])
-        
-        end = timer()
-        print("main algo time", end - start) 
-        
-        lights_considered = [[x[0], x[1], close_lights[x][0], close_lights[x][1]] for x in close_lights]
-        perpendiculars, perpendiculars_list= find_perpendiculars(lights_considered, path, start_location, end_location)
-
-        path = sorted(path.items(), key=lambda kv: kv[1])
-        
-        dark_routes, dark_spot_distances = find_dark_spots(perpendiculars_list, path, dark_route_threshold)
+            if len(route) == 1:
+                route.append(route[0])
 
 
-        dark_route_bounds = directions_api_response[route_num]['bounds']
-        close_lights = [{'lat': x[0], 'lng': x[1], 'CCMS_no':light_data[(x[1],x[0])]['CCMS_no'], 'zone':light_data[(x[1],x[0])]['zone'], 'Type of Light':light_data[(x[1],x[0])]['Type of Light'], 'No. Of Lights':light_data[(x[1],x[0])]['No. Of Lights'], 'Ward No.':light_data[(x[1],x[0])]['Ward No.'] , 'Wattage':light_data[(x[1],x[0])]['Wattage'], 'Connected Load':light_data[(x[1],x[0])]['Connected Load'], 'Actual Load':light_data[(x[1],x[0])]['Actual Load'], 'Unique Pole No.':light_data[(x[1],x[0])]['Unique Pole No.']} for x in close_lights]  
+            total_distance = 0
+            path[(route[0]['lat'], route[0]['lng'])] = total_distance 
+            for i in range(1, len(route)):
+                prev_point = route[i-1] 
+                coordinate = route[i]
+                total_distance += haversine(coordinate['lat'], coordinate['lng'], prev_point['lat'], prev_point['lng'])
+                path[(coordinate['lat'], coordinate['lng'])] = total_distance 
+                    
+            close_lights = dict()
+
+            start = timer()
+            for i in range(1, len(route)):
+                p1 = (route[i-1]['lat'], route[i-1]['lng'])
+                p2 = (route[i]['lat'], route[i]['lng'])
+                lights, distances = pointToLineDistance(p1, p2, light_coordinates, distance_from_path)
+                for j in range(len(lights)):
+                    current_light = (lights[j][0], lights[j][1]) 
+                    if current_light in close_lights.keys():
+                        if close_lights[current_light][2] > distances[j]:
+                            close_lights[current_light] = (p1, p2, distances[j])   
+                    else:
+                        close_lights[current_light] = (p1, p2, distances[j])
+            
+            end = timer()
+            print("main algo time", end - start) 
+            
+            lights_considered = [[x[0], x[1], close_lights[x][0], close_lights[x][1]] for x in close_lights]
+            perpendiculars, perpendiculars_list= find_perpendiculars(lights_considered, path, start_location, end_location)
+
+            path = sorted(path.items(), key=lambda kv: kv[1])
+            
+            dark_routes, dark_spot_distances = find_dark_spots(perpendiculars_list, path, dark_route_threshold)
 
 
-        output = {'route': route, 'route_lights': close_lights, 'bounds': directions_api_response[route_num]['bounds'], 'dark_routes': dark_routes, 'dark_route_bounds': dark_route_bounds, 'perpendiculars': perpendiculars, 'dark_spot_distances':  dark_spot_distances, 'indicator': perpendiculars}
-        end = timer()
-        print("time to compute route: ", end - start) 
+            dark_route_bounds = directions_api_response[route_num]['bounds']
+            close_lights = [{'lat': x[0], 'lng': x[1], 'CCMS_no':light_data[(x[1],x[0])]['CCMS_no'], 'zone':light_data[(x[1],x[0])]['zone'], 'Type of Light':light_data[(x[1],x[0])]['Type of Light'], 'No. Of Lights':light_data[(x[1],x[0])]['No. Of Lights'], 'Ward No.':light_data[(x[1],x[0])]['Ward No.'] , 'Wattage':light_data[(x[1],x[0])]['Wattage'], 'Connected Load':light_data[(x[1],x[0])]['Connected Load'], 'Actual Load':light_data[(x[1],x[0])]['Actual Load'], 'Unique Pole No.':light_data[(x[1],x[0])]['Unique Pole No.']} for x in close_lights]  
 
-        longest_dark_route = 0
-        # Choosing best route
-        if len(dark_spot_distances)!=0:
-            longest_dark_route = max(dark_spot_distances)
-        
-        if(longest_dark_route < best_route_dark_distance):
-            best_route_dark_distance = longest_dark_route
-            best_route_index = route_num
 
-        all_routes[f'route_{route_num}'] = output
-    all_routes['best_route_index'] = best_route_index
+            output = {'route': route, 'route_lights': close_lights, 'bounds': directions_api_response[route_num]['bounds'], 'dark_routes': dark_routes, 'dark_route_bounds': dark_route_bounds, 'perpendiculars': perpendiculars, 'dark_spot_distances':  dark_spot_distances, 'indicator': perpendiculars}
+            end = timer()
+            print("time to compute route: ", end - start) 
+
+            longest_dark_route = 0
+            # Choosing best route
+            if len(dark_spot_distances)!=0:
+                longest_dark_route = max(dark_spot_distances)
+            
+            if(longest_dark_route < best_route_dark_distance):
+                best_route_dark_distance = longest_dark_route
+                best_route_index = route_num
+
+            all_routes[f'route_{route_num}'] = output
+        all_routes['best_route_index'] = best_route_index
+    except:
+        raise HTTPException(status_code=401, detail=" Oops!! Some error occurred..")
 
     return all_routes
 
@@ -550,9 +574,9 @@ async def addLight(req: Request,  user: _schemas.User = Depends(_services.get_cu
     if 'unique_pole_no' not in request_args or request_args['unique_pole_no'] == "":
         raise HTTPException(status_code=401, detail="Pole ID missing")
 
-    d = db['streetlights'].insert_one({'lng': float(request_args['lng']), 'lat':float(request_args['lat']), 'CCMS_no':str(request_args['ccms_no']), 'zone':str(request_args['zone']), 'Type of Light':str(request_args['type_of_light']), 'No. Of Lights': str(request_args['no_of_lights']),'Ward No.': str(request_args['ward_no']), 'wattage': str(request_args['wattage']), 'Connected Load': -1, 'Actual Load': -1, '_id': str(request_args['unique_pole_no'])})
-    if not d:
-        raise HTTPException(status_code=401, detail="Could not insert light")
+    light_added = db['streetlights'].insert_one({'lng': float(request_args['lng']), 'lat':float(request_args['lat']), 'CCMS_no':str(request_args['ccms_no']), 'zone':str(request_args['zone']), 'Type of Light':str(request_args['type_of_light']), 'No. Of Lights': str(request_args['no_of_lights']),'Ward No.': str(request_args['ward_no']), 'wattage': str(request_args['wattage']), 'Connected Load': -1, 'Actual Load': -1, '_id': str(request_args['unique_pole_no'])})
+    if not light_added:
+        raise HTTPException(status_code=401, detail="Could not insert light! Some error occurred")
     return {'response': "successfully added light"}
 
 
@@ -567,23 +591,10 @@ async def deleteLight(req: Request, user: _schemas.User = Depends(_services.get_
     if 'unique_pole_no' not in request_args or request_args['unique_pole_no'] == "":
         raise HTTPException(status_code=401, detail="pole no missing")
     unique_pole_no = str(request_args['unique_pole_no'])
-    d = db['streetlights'].delete_many({'_id':unique_pole_no})
-    if d.deleted_count == 0:
+    light_deleted = db['streetlights'].delete_many({'_id':unique_pole_no})
+    if light_deleted.deleted_count == 0:
         raise HTTPException(status_code=401, detail="No light found with the Pole ID")
     return {'response': "successfully deleted light"}
-
-def send_message(title, message, FCMRegistrationTokenList, dataObj = None):
-    print("Device ID List: ", FCMRegistrationTokenList)
-    notification_message = messaging.MulticastMessage(
-        notification=messaging.Notification(
-            title = title,
-            body = message
-        ),
-    data=dataObj,
-    tokens=FCMRegistrationTokenList,
-    )
-    response = messaging.send_multicast(notification_message)
-    print('{0} messages were sent successfully'.format(response.success_count))
 
 
 @app.get("/reportLight")
@@ -683,10 +694,16 @@ async def report(req: Request):
     
     request_args = dict(req.query_params)
     print(request_args)
-    if 'unique_pole_no' in request_args.keys():
-        unique_pole_no = str(request_args['unique_pole_no'])
+
+
+    if 'pole_id' in request_args.keys():
+        unique_pole_no = str(request_args['pole_id'])
     else:
         raise HTTPException(status_code=401, detail="Pole ID missing")
+
+    if 'pole_id' in request_args.keys() and 'report_type' not in request_args.keys() and 'phone_no' not in request_args.keys():
+        return generate_html_response(unique_pole_no)
+
     phone_no = str(request_args['phone_no'])
     report_type = str(request_args['report_type'])
 
@@ -724,7 +741,7 @@ async def report(req: Request):
 
         # # Report Message here..
         date, time = get_date_time()
-        report_message = "A light pole has been reported with following details: [Lat, Lng]: " + str(lat) +", "+ str(lng) + ', date: '+ date + ' time: '+ time + ', CCMS_no: '+  str(CCMS_no) + ', Zone: '+ Zone+ ', Type_of_Light: '+  Type_of_Light + ', No_Of_Lights: ' + str(No_Of_Lights) + ', Wattage: ' + Wattage + ', Ward_No: ' + Ward_No + ', agency: ' + agency + ', unique_no: ' + unique_pole_no  + ', Connected Load: ' + str(Connected_Load) + ', Actual Load: '+ str(Actual_Load) + '|| Reported by: Phone No: ' + phone_no + 'Report Type: ' + report_type
+        report_message = "A light pole has been reported with following details: [Lat, Lng]: " + str(lat) +", "+ str(lng) + ', date: '+ date + ' time: '+ time + ', CCMS_no: '+  str(CCMS_no) + ', Zone: '+ Zone+ ', Type_of_Light: '+  Type_of_Light + ', No_Of_Lights: ' + str(No_Of_Lights) + ', Wattage: ' + Wattage + ', Ward_No: ' + Ward_No + ', agency: ' + agency + ', unique_no: ' + unique_pole_no  + ', Connected Load: ' + str(Connected_Load) + ', Actual Load: '+ str(Actual_Load) + '|| Reported by: Phone No: ' + phone_no + ' Report Type: ' + report_type
         subject = "Light Reported"
         message = 'Subject: {}\n\n\n{}'.format(subject, report_message)
         port = 587 # For starttls
@@ -744,58 +761,10 @@ async def report(req: Request):
         
 
     except Exception as e:
-        print("error message: ", e)
-    html_content = """
-    <html>
-        <head>
-            <title>Reporting Light</title>
-    <script type="text/javascript">
-        function checking()
-        {
-            console.log("hello")
-        }
-       function reportLight() {
-           var issue = document.getElementById('not working')
-           issue += document.reportform['dim']
-           issue += document.getElementById('pole_tilted')
-           issue += document.getElementById('Other')
-           var contact = document.getElementById('Contact_Number')
-           console.log(issue)
-           let request = `$"""+BACKEND+"""/report?unique_pole_no=${light['Unique Pole No.']}&phone_no=$contact&report_type=$issue`
-            console.log(request)
-            fetch(request)
-            .then((response) => {
-                if(response.status == 200) {
-                    console.log("reported light from html page...")
-                }
-            }).catch(() => {
-            })
-       }
-       let btn = document.getElementById("Submit");
-        btn.addEventListener('click', event => {
-        test();
-        });
-   </script>
-        </head>
-        <body>
-            <form action="javascript:checking() name=reportform">
-                <label>Pole ID: </label>
-                <label>&nbsp;""" + unique_pole_no+ """</label><br><br>
-                <input type="checkbox" id="not working" value="Not Working">
-                <label for="not working"> Report: not working</label><br>
-                <input type="checkbox" id="dim" value="Dim">
-                <label for="dim">Report: dim</label><br>
-                <input type="checkbox" value="Pole is tilted" id="pole_tilted">
-                <label for="Pole is tilted"> Report: Pole is tilted</label><br><br>
-                <input type="text" id="Other" name="Other" placeholder="Other">
-                <input type="text" id="Contact_Number" name="Contact_Number" placeholder="Contact Number"><br><br>
-                <input type="Submit" id="Submit" value="Submit" style="background-color: #24A0ED ;color: white; transition-duration: 0.4s;">
-            </form>
-        </body>
-    </html>
-    """
-    if 'report_type' in request_args.keys() and 'unique_pole_no' not in request_args.keys() and len(request_args['report_type']) > 0:
-        return HTMLResponse(content=html_content, status_code=200)
+        print(e)
+        raise HTTPException(status_code=401, detail="Error in Reporting Light")
+
+
     return get_all_reported_light()
 
 
@@ -824,8 +793,10 @@ def report_region(req: Request):
 
     request_args = dict(req.query_params)
 
+    if 'center' not in request_args or request_args['center'] == "":
+        raise HTTPException(status_code=401, detail=" Centre of Region not defined!! ")
+
     center = request_args['center']
-    print(request_args)
     phone_no = request_args['phone_no']
     report_type = request_args['report_type']
     center = [float(center[1:center.find(',')]),float(center[center.find(',')+2:-1])]
@@ -884,12 +855,17 @@ def report_region(req: Request):
 
     except Exception as e:
         print("error message: ", e)
+        raise HTTPException(status_code=401, detail="Error in Reporting Region")
 
     return get_all_reported_light()
 
-@app.get("/resolveReport")
-def resolveReport(req: Request):
-    request_args = dict(req.query_params)
+
+@app.post("/resolveReport")
+async def resolveReport(req: Request, user: _schemas.User = Depends(_services.get_current_user)):
+
+    authenticate_user(user.email)
+    request_args = await req.json()
+
     all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['_id'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['_id'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['_id'], 'agency': streetlight['_id'][0:2], 'unique_no': streetlight['_id'][7:]} for streetlight in db["streetlights"].find() if streetlight['_id']]
     ccms_arr={ccms_d['ccms_no']: {'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']} 
     for light in all_lights:
@@ -898,77 +874,39 @@ def resolveReport(req: Request):
             light['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
 
     print("arguments: ", request_args, not request_args)
-    if 'id' in request_args:
-        ids = request_args['id']
-    else:
-        raise HTTPException(status_code=401, detail="Entered.")
-        
+
+    if 'id' not in request_args or request_args['id'] == "":
+        raise HTTPException(status_code=401, detail="No Pole selected to be resolved")
+    
+    ids = request_args['id']   
     comment = request_args['comment']
-    print("ids:", ids)
-    reported_lights = list(ids.split(','))
 
-    for reported_light in reported_lights:
-        print(reported_light)
-        resolved_light_data = db['reports'].find_one({'_id': ObjectId(reported_light)})
-        
-        if not resolved_light_data:
-            print(f"Light with id \"{reported_light}\" not found")
-            raise HTTPException(status_code=401, detail="All lights not reported..")
-        print("\n\nLight being resolved ", resolved_light_data)
-        db['reports'].delete_one({'_id': ObjectId(reported_light)})
+    try:
+        print("ids:", ids)
+        reported_lights = list(ids.split(','))
 
-        print(resolved_light_data)
-        resolved_light_data['Comments'] = comment
-        date, time = get_date_time()
-        resolved_light_data['resolved_date'] = date
-        resolved_light_data['resolved_time'] = time
-        del resolved_light_data['_id']
-        print(resolved_light_data)
-        db['resolved-reports'].insert_one(resolved_light_data)
-    
+        for reported_light in reported_lights:
+            resolved_light_data = db['reports'].find_one({'_id': ObjectId(reported_light)})
+            
+            if not resolved_light_data:
+                print(f"Light with id \"{reported_light}\" not found")
+                raise HTTPException(status_code=401, detail="All lights not reported..")
+            print("\n\nLight being resolved ", resolved_light_data)
+            db['reports'].delete_one({'_id': ObjectId(reported_light)})
+
+            print("resolved_light_Data: ", resolved_light_data)
+            resolved_light_data['Comments'] = comment
+            date, time = get_date_time()
+            resolved_light_data['resolved_date'] = date
+            resolved_light_data['resolved_time'] = time
+            del resolved_light_data['_id']
+            print(resolved_light_data)
+            db['resolved-reports'].insert_one(resolved_light_data)
+    except Exception as e:
+        print("error message: ", e)
+        raise HTTPException(status_code=401, detail=" Oops!! Some error occurred while resolving report. ")
+
     return get_all_reported_light()
-
-# @app.post("/resolveReport")
-# async def resolveReport(req: Request, user: _schemas.User = Depends(_services.get_current_user)):
-#     authenticate_user(user.email)
-#     request_args = await req.json()
-#     all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['_id'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['_id'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['_id'], 'agency': streetlight['_id'][0:2], 'unique_no': streetlight['_id'][7:]} for streetlight in db["streetlights"].find() if streetlight['_id']]
-#     ccms_arr={ccms_d['ccms_no']: {'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']} 
-#     for light in all_lights:
-#         if light['CCMS_no'] in ccms_arr.keys():
-#             light['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
-#             light['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
-
-#     print("arguments: ", request_args, not request_args)
-#     if 'id' in reques_args:
-#         ids = request_args['id']
-#     else:
-#         raise HTTPException(status_code=401, detail="Entered.")
-        
-#     comment = request_args['comment']
-#     print("ids:", ids)
-#     reported_lights = list(ids.split(','))
-
-#     for reported_light in reported_lights:
-#         print(reported_light)
-#         resolved_light_data = db['reports'].find_one({'_id': ObjectId(reported_light)})
-        
-#         if not resolved_light_data:
-#             print(f"Light with id \"{reported_light}\" not found")
-#             raise HTTPException(status_code=401, detail="All lights not reported..")
-#         print("\n\nLight being resolved ", resolved_light_data)
-#         db['reports'].delete_one({'_id': ObjectId(reported_light)})
-
-#         print(resolved_light_data)
-#         resolved_light_data['Comments'] = comment
-#         date, time = get_date_time()
-#         resolved_light_data['resolved_date'] = date
-#         resolved_light_data['resolved_time'] = time
-#         del resolved_light_data['_id']
-#         print(resolved_light_data)
-#         db['resolved-reports'].insert_one(resolved_light_data)
-    
-#     return get_all_reported_light()
 
 @app.get("/getResolvedReport")
 async def getResolvedReport(user: _schemas.User = Depends(_services.get_current_user)):
@@ -978,10 +916,9 @@ async def getResolvedReport(user: _schemas.User = Depends(_services.get_current_
 
 
 @app.post("/addLightsFile")
-def addLightsFile(file: UploadFile = File(...)):
+async def addLightsFile(file: UploadFile = File(...), user: _schemas.User = Depends(_services.get_current_user)):
 
-    # authenticate_user(user.email)
-    # file = await file
+    authenticate_user(user.email)
     try:
         df = pd.read_csv(file.file, dtype={'Unique Pole No.':str, 'Wattage':str})
         lampposts = []
@@ -999,16 +936,15 @@ def addLightsFile(file: UploadFile = File(...)):
     if(len(lampposts)!=0):
         db['streetlights'].insert_many(lampposts)
     else:
-        raise HTTPException(status_code=401, detail="Could not add sheet data")
+        raise HTTPException(status_code=401, detail="Oops! Could not add sheet data")
 
     return {'response': "successfully added csv"}
  
 
 @app.post("/deleteLightsFile")
-def deleteLightsFile(file: UploadFile = File(...)):
-    # authenticate_user(user.email)
-    # file = await file
-
+async def deleteLightsFile(file: UploadFile = File(...), user: _schemas.User = Depends(_services.get_current_user)):
+    
+    authenticate_user(user.email)
     try:
         df = pd.read_csv(file.file, dtype={'Unique Pole No.':str, 'Wattage':str})
         lampposts = []
@@ -1019,9 +955,7 @@ def deleteLightsFile(file: UploadFile = File(...)):
         temp = df_final_latlng.values.tolist()
         temp = map(lambda x : {'lat':x[1], 'lng':x[0], 'CCMS_no': x[2], 'zone': x[3], 'Type of Light':x[4], 'No. Of Lights':x[5], 'Ward No.':x[6], 'wattage': x[7],'Connected Load':-1, 'Actual Load':-1, '_id':x[8] }, temp)
         lampposts += temp
-
         undeleted_poles_in_csv = []
-
         for pole in lampposts:
             d = db['streetlights'].delete_many({'_id':pole['_id']})
             if d.deleted_count == 0:
@@ -1033,14 +967,16 @@ def deleteLightsFile(file: UploadFile = File(...)):
         
     except Exception as e:
         print("error message: ", e)
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=401, detail="Oops! Could not delete sheet data")
 
-    return {'response': "successfully deleted csv poles"}
+    return {'response': "successfully deleted all csv poles"}
 
 
 @app.get("/place")
 def get_latlng(req: Request):
     request_args = dict(req.query_params)
+    if 'query' not in request_args or request_args['query'] == "":
+        raise HTTPException(status_code=401, detail="No place defined")
     place = request_args['query']
     latlng = maps.directions(place, place)[0]['bounds']['northeast']
     return latlng
@@ -1070,7 +1006,25 @@ def get_icon2():
     return FileResponse("light.png")
 
 
-# utility functions
+# Utility functions for APIs
+
+def send_message(title, message, FCMRegistrationTokenList, dataObj = None):
+    # For mobile notifications to logged-in users!!
+
+    try:
+        print("Device ID List: ", FCMRegistrationTokenList)
+        notification_message = messaging.MulticastMessage(
+            notification=messaging.Notification(
+                title = title,
+                body = message
+            ),
+        data=dataObj,
+        tokens=FCMRegistrationTokenList,
+        )
+        response = messaging.send_multicast(notification_message)
+        print('{0} messages were sent successfully'.format(response.success_count))
+    except:
+        raise HTTPException(status_code=401, detail="Some error occurred while sending notifications!")
 
 def get_date_time():
     date_time = datetime.now(IST) 
@@ -1079,6 +1033,7 @@ def get_date_time():
 
 
 def authenticate_user(email):
+    db['LoggedIn-Users'].delete_many({'timestamp':{'$lte': datetime.now(IST) - timedelta(minutes=30)}})
     authenticated = db['LoggedIn-Users'].find_one({'email':email})
     # {'email':str(form_data.username), 'token':str(token['access_token'].decode("utf-8")), 'timestamp': datetime.now(IST),'FCMRegistrationToken': str(form_data.client_id)}
     li = [{'email': ccms_d['email'], 'timestamp': ccms_d['timestamp']} for ccms_d in db['LoggedIn-Users'].find()]
@@ -1091,7 +1046,6 @@ def authenticate_user(email):
 
 def get_all_reported_light():
     ccms_arr={ccms_d['ccms_no']: {'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']} 
-
     reported_list = [{'date': report['date'],'time': report['time'], 'id':str(report['_id']), 'Phone No': report['phone_no'], 'Report Type': report['report_type'], 'unique_pole_no' : report['unique_pole_no']} for report in db['reports'].find()]
     for report in reported_list:
         light_record = db['streetlights'].find_one({'_id':report['unique_pole_no']})
@@ -1133,5 +1087,59 @@ def get_all_resolved_reported_light():
     return resolved_report_list
 
 
-
-
+def generate_html_response(unique_pole_no):
+    html_content = """
+    <html>
+        <head>
+            <title>Reporting Light</title>
+                <script type="text/javascript">
+                function reportLight() {
+                    var issue = ''
+                    if(document.getElementById('not working').checked)
+                    {
+                        issue += document.getElementById('not working').value
+                    }
+                    if(document.getElementById('dim').checked)
+                    {
+                        issue += document.getElementById('dim').value
+                    }
+                    if(document.getElementById('pole_tilted').checked)
+                    {
+                        issue += document.getElementById('pole_tilted').value
+                    }
+                    issue += document.getElementById('Other').value
+                    var contact = document.getElementById('Contact_Number').value
+                    let request = `/report?pole_id=""" + unique_pole_no+ """&phone_no=${contact}&report_type=${issue}`
+                    fetch(request)
+                        .then((response) => {
+                            if(response.status == 200) {
+                                console.log("reported light from html page...")
+                                console.log(response)
+                                console.log(issue)
+                                document.getElementById('reporting_status').innerHTML = 'Light has been reported succesfully!! ';
+                            }
+                        }).catch(() => {
+                            document.getElementById('reporting_status').innerHTML = 'Some error occurred!! ';
+                        })
+                }
+            </script>
+        </head>
+        <body>
+            <form action="javascript:checking() name=reportform">
+                <label>Pole ID: </label>
+                <label>&nbsp;""" + unique_pole_no+ """</label><br><br>
+                <input type="checkbox" id="not working" value=" Not Working ">
+                <label for="not working"> Report: not working</label><br>
+                <input type="checkbox" id="dim" value=" Dim ">
+                <label for="dim">Report: dim</label><br>
+                <input type="checkbox" value=" Pole is tilted " id="pole_tilted">
+                <label for="Pole is tilted"> Report: Pole is tilted</label><br><br>
+                <input type="text" id="Other" name="Other" placeholder="Other">
+                <input type="text" id="Contact_Number" name="Contact_Number" placeholder="Contact Number"><br><br>
+                <button onclick="reportLight()">Report Light</button><br><br>
+                <label id="reporting_status"></label>
+            </form>
+        </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content, status_code=200)

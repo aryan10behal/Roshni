@@ -3,7 +3,7 @@ import env from "react-dotenv";
 export const UserContext = createContext();
 
 export const UserProvider = (props) => {
-  const [token, setToken] = useState(localStorage.getItem("awesomeLeadsToken"));
+  const [token, setToken] = useState(localStorage.getItem("User_Token"));
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -16,11 +16,11 @@ export const UserProvider = (props) => {
       };
 
       const response = await fetch(env.BACKEND +"/api/users/me", requestOptions);
-
+      
       if (!response.ok) {
         setToken(null);
       }
-      localStorage.setItem("awesomeLeadsToken", token);
+      localStorage.setItem("User_Token", token);
     };
     fetchUser();
   }, [token]);

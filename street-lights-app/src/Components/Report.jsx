@@ -180,7 +180,7 @@ function SelectedLight({light, reports, reportFlag, setReportFlag, setReports}) 
 
     function reportLight(issue, contact) {
         setStatus(REPORTING)
-        let request = `${env.BACKEND}/report?unique_pole_no=${light['Unique Pole No.']}&phone_no=${contact}&report_type=${issue}`
+        let request = `${env.BACKEND}/report?pole_id=${light['Unique Pole No.']}&phone_no=${contact}&report_type=${issue}`
         console.log(request)
         fetch(request)
         .then((response) => {

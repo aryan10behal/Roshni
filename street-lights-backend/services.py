@@ -5,15 +5,16 @@ import datetime as _dt
 import sqlalchemy.orm as _orm
 import passlib.hash as _hash
 from dotenv import load_dotenv
-import os
-
-
-
 import database as _database, models as _models, schemas as _schemas
+import uuid
+import pymongo
+
+myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+
+database = myclient["street-lights-db"]
 
 oauth2schema = _security.OAuth2PasswordBearer(tokenUrl="/api/token")
-
-JWT_SECRET = str(os.getenv('JWT_SECRET'))
+# unique_token = str(uuid.uuid1())
 
 
 
@@ -56,8 +57,18 @@ async def authenticate_user(email: str, password: str, db: _orm.Session):
 
 
 async def create_token(user: _models.User):
+    unique_token = [token["unique_token"] for token in database['unique-token'].find() if token["unique_token"]][0]
     user_obj = _schemas.User.from_orm(user)
-    token = _jwt.encode(user_obj.dict(), JWT_SECRET)
+    print("\n\nunique token value#: ",unique_token)
+
+    user_obj = user_obj.dict()
+    user_obj['salt'] = str(uuid.uuid1())
+    token = _jwt.encode(user_obj, unique_token)
+
+    # token = _jwt.encode(user_obj.dict(), unique_token)
+    print("encrypted token: ", unique_token)
+    print("bhai token kya aaya hai?? ", token)
+    print("\n\nunique token value from backend!! : ", unique_token, token)
     return dict(access_token=token, token_type="bearer")
 
 
@@ -65,13 +76,14 @@ async def get_current_user(
     db: _orm.Session = _fastapi.Depends(get_db),
     token: str = _fastapi.Depends(oauth2schema),
 ):
+    unique_token = [token["unique_token"] for token in database['unique-token'].find() if token["unique_token"]][0]
     try:
-        payload = _jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        print("\n\nunique token value from frontend: ", unique_token, token)
+        payload = _jwt.decode(token, unique_token, algorithms=["HS256"])
         user = db.query(_models.User).get(payload["id"])
-    except:
-        raise _fastapi.HTTPException(
-            status_code=401, detail="Invalid Email or Password"
-        )
+    except Exception as e:
+        print("error message", e)
+        raise _fastapi.HTTPException(status_code=401, detail="Invalid Email or Password")
 
     return _schemas.User.from_orm(user)
 
@@ -84,60 +96,4 @@ async def delete_current_user(user: _models.User, db: _orm.Session):
     db.delete(user_obj)
     db.commit()
 
-# async def create_lead(user: _schemas.User, db: _orm.Session, lead: _schemas.LeadCreate):
-#     lead = _models.Lead(**lead.dict(), owner_id=user.id)
-#     db.add(lead)
-#     db.commit()
-#     db.refresh(lead)
-#     return _schemas.Lead.from_orm(lead)
-
-
-# async def get_leads(user: _schemas.User, db: _orm.Session):
-#     leads = db.query(_models.Lead).filter_by(owner_id=user.id)
-
-#     return list(map(_schemas.Lead.from_orm, leads))
-
-
-# async def _lead_selector(lead_id: int, user: _schemas.User, db: _orm.Session):
-#     lead = (
-#         db.query(_models.Lead)
-#         .filter_by(owner_id=user.id)
-#         .filter(_models.Lead.id == lead_id)
-#         .first()
-#     )
-
-#     if lead is None:
-#         raise _fastapi.HTTPException(status_code=404, detail="Lead does not exist")
-
-#     return lead
-
-
-# async def get_lead(lead_id: int, user: _schemas.User, db: _orm.Session):
-#     lead = await _lead_selector(lead_id=lead_id, user=user, db=db)
-
-#     return _schemas.Lead.from_orm(lead)
-
-
-# async def delete_lead(lead_id: int, user: _schemas.User, db: _orm.Session):
-#     lead = await _lead_selector(lead_id, user, db)
-
-#     db.delete(lead)
-#     db.commit()
-
-
-
-# async def update_lead(lead_id: int, lead: _schemas.LeadCreate, user: _schemas.User, db: _orm.Session):
-#     lead_db = await _lead_selector(lead_id, user, db)
-
-#     lead_db.first_name = lead.first_name
-#     lead_db.last_name = lead.last_name
-#     lead_db.email = lead.email
-#     lead_db.company = lead.company
-#     lead_db.note = lead.note
-#     lead_db.date_last_updated = _dt.datetime.utcnow()
-
-#     db.commit()
-#     db.refresh(lead_db)
-
-#     return _schemas.Lead.from_orm(lead_db)
 

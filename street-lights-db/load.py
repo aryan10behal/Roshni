@@ -11,6 +11,7 @@ administration_ids = db["administration-details"]
 ccms = db["ccms"]
 reports = db["reports"]
 resolved_report = db['resolved-reports']
+unique_token = db['unique-token']
 
 streetlights.drop()
 loggedInUsers.drop()
@@ -18,6 +19,7 @@ administration_ids.drop()
 reports.drop()
 resolved_report.drop()
 ccms.drop()
+unique_token.drop()
 
 
 for x in streetlights.find()[:10]:

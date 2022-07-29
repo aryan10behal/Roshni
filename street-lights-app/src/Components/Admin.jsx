@@ -43,8 +43,6 @@ function Admin({setLights, poleData}) {
     const [addSingleLightData, setAddSingleLightData] = useState({ccms_no:"", unique_pole_no:"", ward_no:"", zone:"", lat:"", lng:"",type_of_light:"", no_of_lights:"", wattage:""});
     const [deleteSingleLightData, setDeleteSingleLightData] = useState("");
 
-
-
     const [selectedFileAdd, setSelectedFileAdd] = useState();
     const [isFilePickedAdd, setIsFilePickedAdd] = useState(false);
     const [selectedFileDelete, setSelectedFileDelete] = useState();
@@ -74,6 +72,7 @@ function Admin({setLights, poleData}) {
 
 
     React.useEffect(()=>{
+        setToken(localStorage.getItem("User_Token"))
         if(options!=3){
             setShowReports(false);
         }
@@ -95,21 +94,35 @@ function Admin({setLights, poleData}) {
 
     // Login Admin
     const submitLogin = async () => {
+        if(!email || !password)
+        {
+            console.log("Email/Password missing")
+            return;
+        }
+        console.log(localStorage.getItem("User_Token"))
         const requestOptions = {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: JSON.stringify(
-            `grant_type=&username=${email}&password=${password}&scope=&client_id=${1234}&client_secret=`
+            `grant_type=&username=${email}&password=${password}&scope=&client_id=${1234}&client_secret=${localStorage.getItem("User_Token")}`
         ),
         };
 
         const response = await fetch(env.BACKEND + "/api/token", requestOptions);
         const data = await response.json();
 
-    
         if (!response.ok) {
             setErrorMessage(data.detail);
-        } else {
+        }
+        else if(data.status_code === 401)
+        {
+            console.log("Already user logged in.. So returning")
+            // add some field saying another user already logged-in.
+            // add some mechanism to display content as the other admin.. Or let them perform no task...
+            return;
+        } 
+        else {
+            console.log("HELLOOO")
             setToken(data.access_token);
         }
     };
@@ -162,8 +175,8 @@ function Admin({setLights, poleData}) {
         if (!response.ok) {
         setErrorMessage(data.detail);
         } else {
+        localStorage.setItem("User_Token", null);
         setToken(data.access_token)
-        localStorage.setItem("awesomeLeadsToken", null);
         console.log(data.access_token)
         }
     };
@@ -266,66 +279,58 @@ function Admin({setLights, poleData}) {
         
     };
 
-    const handleSubmissionAdd = () => {
+    const handleSubmissionAdd = async() => {
         if (!isFilePickedAdd) return;
         const formData = new FormData();
         formData.append("file", selectedFileAdd);
-        fetch(env.BACKEND + `/addLightsFile`, {
-            method:"POST",
-            body: formData
-          }).then(setLights([]));
-          
-    };
-    // const handleSubmissionAdd = async() => {
-    //     if (!isFilePickedAdd) return;
-    //     const formData = new FormData();
-    //     formData.append("file", selectedFileAdd);
-    //     const requestOptions = {
-    //         method: "POST",
-    //         headers: { "Content-Type": "multipart/form-data",
-    //         Authorization: "Bearer " + token,
-    //         },
-    //         body: formData,
-    //       };   
-    //       const response = await fetch(env.BACKEND + `/addLightsFile`, requestOptions);
-    //       const data = await response.json();
+        const requestOptions = {
+            method: "POST",
+            headers: {
+            Authorization: "Bearer " + token,
+            },
+            body: formData,
+          };   
+          const response = await fetch(env.BACKEND + `/addLightsFile`, requestOptions);
+          const data = await response.json();
+          console.log(response)
+          console.log(data)
       
-    //       if (!response.ok) {
-    //         setErrorMessage(data.detail);
-    //       } else {
-    //         setLights([])
-    //       }
-    // }
+          if (!response.ok) {
+            setErrorMessage(data.detail);
+          } else {
+            setLights([])
+          }
+    }
 
-    const handleSubmissionDelete = () => {
-        if (!isFilePickedDelete) return;
-        const formData = new FormData();
-        formData.append("file", selectedFileDelete);
-        fetch(env.BACKEND + `/deleteLightsFile`, {
-            method:"POST",
-            body: formData
-          }).then(setLights([]));  
-    };
-    // const handleSubmissionDelete = async() => {
-    //     if(!isFilePickedDelete) return;
+    // const handleSubmissionDelete = () => {
+    //     if (!isFilePickedDelete) return;
     //     const formData = new FormData();
     //     formData.append("file", selectedFileDelete);
-    //     const requestOptions = {
-    //         method: "POST",
-    //         headers: { "Content-Type": "application/json",
-    //         Authorization: "Bearer " + token,
-    //         },
-    //         body: formData,
-    //       };   
-    //       const response = await fetch(env.BACKEND + `/deleteLightsFile`, requestOptions);
-    //       const data = await response.json();
+    //     fetch(env.BACKEND + `/deleteLightsFile`, {
+    //         method:"POST",
+    //         body: formData
+    //       }).then(setLights([]));  
+    // };
+    const handleSubmissionDelete = async() => {
+        if(!isFilePickedDelete) return;
+        const formData = new FormData();
+        formData.append("file", selectedFileDelete);
+        const requestOptions = {
+            method: "POST",
+            headers: {
+            Authorization: "Bearer " + token,
+            },
+            body: formData,
+          };   
+          const response = await fetch(env.BACKEND + `/deleteLightsFile`, requestOptions);
+          const data = await response.json();
       
-    //       if (!response.ok) {
-    //         setErrorMessage(data.detail);
-    //       } else {
-    //         setLights([])
-    //       }
-    // }
+          if (!response.ok) {
+            setErrorMessage(data.detail);
+          } else {
+            setLights([])
+          }
+    }
 
 
     const handleDialog=(reports_to_resolve)=>{
@@ -335,43 +340,40 @@ function Admin({setLights, poleData}) {
         handleClickOpen();
     }
 
-    // const handleResolveReports = reports_to_resolve => async() => {
-    //     // reports_to_resolve = await  encodeURIComponent(reports_to_resolve)
-    //     console.log(reports_to_resolve)
-    //     console.log("token val: ", token)
-    //     const requestOptions = {
-    //         method: "POST",
-    //         headers: { "Content-Type": "application/json",
-    //         Authorization: "Bearer " + token,},
-    //         body: JSON.stringify({
-    //             //id: encodeURIComponent(reports_to_resolve),
-    //             comment: adminComment,
-    //           },
-    //         )
-    //       };    
-    //       const response = await fetch(env.BACKEND + `/resolveReport`, requestOptions);
-    //       const data = await response.json();
+    const handleResolveReports = async(reports_to_resolve) => {
+        const requestOptions = {
+            method: "POST",
+            headers: { "Content-Type": "application/json",
+            Authorization: "Bearer " + token,},
+            body: JSON.stringify({
+                id: reports_to_resolve,
+                comment: adminComment,
+              },
+            )
+          };    
+          const response = await fetch(env.BACKEND + `/resolveReport`, requestOptions);
+          const data = await response.json();
       
-    //       if (!response.ok) {
-    //         setErrorMessage(data.detail);
-    //       } else {
-    //         setReports(data);
-    //       }
-    // }
-    
-    const handleResolveReports=(reports_to_resolve)=>{
-        console.log(encodeURIComponent(reports_to_resolve))
-        fetch(`${env.BACKEND}/resolveReport?id=${encodeURIComponent(reports_to_resolve)}&comment=${adminComment}`)
-        .then((response) => {
-            if(response.status == 200) {
-                response.json().then((data) => {
-                    setReports(data);
-                })
-            } else {
-                console.log("Unable to resolve");
-            }
-        })
+          if (!response.ok) {
+            setErrorMessage(data.detail);
+          } else {
+            setReports(data);
+          }
     }
+    
+    // const handleResolveReports=(reports_to_resolve)=>{
+    //     console.log(encodeURIComponent(reports_to_resolve))
+    //     fetch(`${env.BACKEND}/resolveReport?id=${encodeURIComponent(reports_to_resolve)}&comment=${adminComment}`)
+    //     .then((response) => {
+    //         if(response.status == 200) {
+    //             response.json().then((data) => {
+    //                 setReports(data);
+    //             })
+    //         } else {
+    //             console.log("Unable to resolve");
+    //         }
+    //     })
+    // }
 
 
     
@@ -614,10 +616,74 @@ function Admin({setLights, poleData}) {
 
     return (
         <div>
-        {token ? (
-  
+        {!token? 
+        (
+         <div className="LoginCard">
+             <ThemeProvider theme={theme}>
+                <Container component="main" maxWidth="xs">
+                        <CssBaseline />
+                        <Box
+                        sx={{
+                            marginTop: 8,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                        }}>
+                    <Avatar sx={{ m: 1, bgcolor: '#24a0ed' }}>
+                        <LockOutlinedIcon />
+                    </Avatar>
+                    <Typography component="h1" variant="h5">
+                        Sign in
+                    </Typography>
+                    <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
+                        <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        id="email"
+                        label="Email Address"
+                        name="email"
+                        autoComplete="email"
+                        autoFocus
+                        type="email"
+                        placeholder="Enter email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="input"
+                    
+                        />
+                        <TextField
+                        margin="normal"
+                        fullWidth
+                        name="password"
+                        label="Password"
+                        type="password"
+                        id="password"
+                        autoComplete="current-password"
+                        placeholder="Enter password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="input"
+                        required
+                        />
+                    
+                        <Button
+                        type="submit"
+                        fullWidth
+                        variant="contained"
+                        sx={{ mt: 3, mb: 2 }} >
+                        Sign In
+                        </Button>
+                    </Box>
+                    <ErrorMessage message={errorMessage} />
+                 </Box>
+                </Container>
+            </ThemeProvider>
+        </div>
+        )
+        :
+        (
         <div className='App-body' id='Admin-App-Body'>
-        
         <div className="InputAdmin">
             <div className="LayersAdmin">
             <Button className="button is-primary adminButton" onClick={() => {setOptions(1); setShowReports(true);}} >Show Reports</Button>
@@ -627,23 +693,22 @@ function Admin({setLights, poleData}) {
             <Button className="button is-primary adminButton" onClick={() => setOptions(5)}>Delete StreetLight</Button>
             <Button className="button is-primary adminButton" onClick={(e)=>{handleRegisterUser(e); setOptions(6);}} >Register New Admin</Button>
             
-
-            
             <Button className="button is-primary adminButton" onClick={handleLogOut}>
                 LogOut
             </Button>  
     
             </div>
         </div>
-        {options==6 && token ?(
+        {token && options==6?(
              <div className="AdminRightWrapper">
+                 {console.log(token)}
              <Register registered = {registered} setRegistered={setRegistered}/>
              {/* <br />
              <Button className="button is-primary" onClick={handleDoneRegisteration}>Back</Button> */}
             
      </div>
         ):""}
-        {options==4 && token?
+        {token && options==4?
             (   
                 <div className="AdminRightWrapper">
                    
@@ -696,7 +761,7 @@ function Admin({setLights, poleData}) {
                 
                 </div>
             ) : ""}
-            {options==5 && token?
+            {token && options==5? 
             (   
                 <div className="AdminRightWrapper">
                    
@@ -738,7 +803,7 @@ function Admin({setLights, poleData}) {
                 </div>
             ) : ""}
     
-            {options==1 && token?      
+            {token && options==1?      
                (<div className = "AdminRightWrapper">
                     <div className="ReportsTable">
                         <DataGrid 
@@ -749,7 +814,6 @@ function Admin({setLights, poleData}) {
                         checkboxSelection
                         onSelectionModelChange={(newSelection) => {
                         setSelectionModel(newSelection);
-                        console.log(selectionModel);
                         }}
                         selectionModel={selectionModel}
                         
@@ -768,7 +832,7 @@ function Admin({setLights, poleData}) {
                 </div>   
             ):""}
     
-            {options==3 && token?(
+            {token && options==3?(
                 <div className = "AdminRightWrapper">
                 <div className="ReportsTable">
                     <DataGrid 
@@ -785,7 +849,7 @@ function Admin({setLights, poleData}) {
                 </div>
                 </div>
             ):""}
-            {options==2 && token? 
+            {token && options==2? 
             (
             <Wrapper  
                 className="Wrapper"
@@ -803,7 +867,7 @@ function Admin({setLights, poleData}) {
             </Wrapper>
             ) : ""}
             
-            {showDialog && token?(
+            {token && showDialog?(
                 <div>
           <Dialog open={open} onClose={handleClose}>
             <DialogTitle>Resolve Report</DialogTitle>
@@ -824,75 +888,12 @@ function Admin({setLights, poleData}) {
             </DialogContent>
             <DialogActions>
               <Button onClick={handleClose}>Cancel</Button>
-              <Button onClick={()=>{handleResolveReports(selectionModel);handleClose()}}>Resolve</Button>
+              <Button onClick={()=>{handleResolveReports(String(selectionModel));handleClose()}}>Resolve</Button>
             </DialogActions>
           </Dialog>
         </div>):""}
-    </div>):
-        (
-        <div className="LoginCard">
-         <ThemeProvider theme={theme}>
-            <Container component="main" maxWidth="xs">
-                    <CssBaseline />
-                    <Box
-                    sx={{
-                        marginTop: 8,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                    }}>
-                <Avatar sx={{ m: 1, bgcolor: '#24a0ed' }}>
-                    <LockOutlinedIcon />
-                </Avatar>
-                <Typography component="h1" variant="h5">
-                    Sign in
-                </Typography>
-                <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
-                    <TextField
-                    margin="normal"
-                    required
-                    fullWidth
-                    id="email"
-                    label="Email Address"
-                    name="email"
-                    autoComplete="email"
-                    autoFocus
-                    type="email"
-                    placeholder="Enter email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="input"
-                
-                    />
-                    <TextField
-                    margin="normal"
-                    fullWidth
-                    name="password"
-                    label="Password"
-                    type="password"
-                    id="password"
-                    autoComplete="current-password"
-                    placeholder="Enter password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="input"
-                    required
-                    />
-                
-                    <Button
-                    type="submit"
-                    fullWidth
-                    variant="contained"
-                    sx={{ mt: 3, mb: 2 }} >
-                    Sign In
-                    </Button>
-                </Box>
-                <ErrorMessage message={errorMessage} />
-             </Box>
-            </Container>
-        </ThemeProvider>
-    </div>
-        )}
+    </div>)
+        }
     </div>
   )
  
