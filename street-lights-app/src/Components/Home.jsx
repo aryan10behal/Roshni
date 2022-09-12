@@ -213,7 +213,7 @@ function Home({lights, poleData}) {
             <div>CCMS No.: {poleInfo['CCMS NO']}</div>
             <div>Type of Light: {poleInfo['Type of Light']}</div>
             <div>No. Of Lights: {poleInfo['No. Of Lights']}</div>
-            <div>Wattage: {parseInt(poleInfo['Wattage'])}</div>
+            <div>Wattage: {poleInfo['Wattage']}</div>
             <div>Connected Load: {poleInfo['Connected Load']!=-1?poleInfo['Connected Load']:0}</div>
             <div>Actual Load: {poleInfo['Actual Load']!=-1?poleInfo['Actual Load']:0}</div>
             <div>Unique Pole No.: {poleInfo['Unique Pole No.']}</div>

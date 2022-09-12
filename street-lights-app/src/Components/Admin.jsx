@@ -48,9 +48,7 @@ function Admin({setLights, poleData}) {
     const [selectedFileDelete, setSelectedFileDelete] = useState();
     const [isFilePickedDelete, setIsFilePickedDelete] = useState(false);
 
-    const [showReports, setShowReports] = useState(true);
-    const [showResolvedReports, setShowResolvedReports] = useState(false);
-    const [showMap, setShowMap] = useState(false);
+
     const [reports, setReports] = useState(null);
     const [resolvedReports, setResolvedReports] = useState(null);
     const [showDialog, setShowDialog] = useState(false);
@@ -58,9 +56,7 @@ function Admin({setLights, poleData}) {
 
     const [selectionModel, setSelectionModel] = React.useState([]);
 
-    const [selectedLight, setSelectedLight] = useState(null);
-
-    const [options, setOptions] = useState(1);
+    const [options, setOptions] = useState(0);
     const [poleInfo, setPoleInfo]= useState([]);
     //1: Show reports
     //2: Show reports on map
@@ -73,13 +69,6 @@ function Admin({setLights, poleData}) {
 
     React.useEffect(()=>{
         setToken(localStorage.getItem("User_Token"))
-        if(options!=3){
-            setShowReports(false);
-        }
-        if(options!==4){
-            setShowResolvedReports(false);
-        }
-
     }, [options])
 
     //Setting Values for single light data
@@ -116,14 +105,14 @@ function Admin({setLights, poleData}) {
         }
         else if(data.status_code === 401)
         {
-            console.log("Already user logged in.. So returning")
-            // add some field saying another user already logged-in.
-            // add some mechanism to display content as the other admin.. Or let them perform no task...
-            return;
+            console.log(data.detail)
+            setErrorMessage(data.detail);
         } 
         else {
-            console.log("HELLOOO")
+            console.log("Token has been set in local storage")
+            localStorage.setItem("User_Token", data.access_token);
             setToken(data.access_token);
+            setOptions(1);
         }
     };
 
@@ -135,7 +124,9 @@ function Admin({setLights, poleData}) {
     React.useEffect(()=>{
         if(!token)
         {
+            console.log("!token chal gyaa!!")
             setEmail("");
+            setOptions(0);
             setPassword("");
             setErrorMessage("");
             setRegisterUser(null);
@@ -144,9 +135,6 @@ function Admin({setLights, poleData}) {
             setIsFilePickedAdd(false);
             setSelectedFileDelete();
             setIsFilePickedDelete(false);
-            setShowReports(false);
-            setShowResolvedReports(false);
-            setShowMap(false);
             setReports(null);
             setResolvedReports(null)
             setShowDialog(false)
@@ -162,22 +150,26 @@ function Admin({setLights, poleData}) {
                 "Content-Type": "application/json",
                 Authorization: "Bearer " + token,
             },
-    };
+        };
 
         if(email=="" || password=="") 
         {
             setToken(null)
+            localStorage.setItem("User_Token", null);
             return
         }
         const response = await fetch(env.BACKEND + "/logout", requestOptions);
         const data = await response.json();
 
-        if (!response.ok) {
-        setErrorMessage(data.detail);
+        if(!response.ok || data.detail == "Invalid Email or Password"){
+            setErrorMessage(data.detail);
+            localStorage.setItem("User_Token", null);
+            setToken(null)
+            console.log("Logged-Out")
         } else {
-        localStorage.setItem("User_Token", null);
-        setToken(data.access_token)
-        console.log(data.access_token)
+            localStorage.setItem("User_Token", null);
+            setToken(data.access_token)
+            console.log(data.access_token)
         }
     };
 
@@ -219,19 +211,21 @@ function Admin({setLights, poleData}) {
           const response = await fetch(env.BACKEND + `/addLight`, requestOptions);
           const data = await response.json();
       
-          if (!response.ok) {
-            setErrorMessage(data.detail);
-          } else {
+          if(!response.ok || data.detail == "Invalid Email or Password")
+          {
+              console.log("Admin Session Expired.. Please try logging again!")
+              localStorage.setItem("User_Token", null);
+              setToken(null)
+              setErrorMessage("Admin Session Expired.. Please try logging again!")
+          }
+          else if(data.status_code === 401)
+            {
+                console.log(data.detail)
+                //setXyz(data.detail)
+            } 
+          else {
             setLights([])
           }
-
-        // axios.get(env.BACKEND + `/addLight`, {
-        //     params: {
-        //       latitude: addLightLat,
-        //       longitude: addLightLong
-        //     },
-        //   })
-        //   setLights([]);
     };
 
     const deleteLight = async() => {
@@ -252,9 +246,19 @@ function Admin({setLights, poleData}) {
           const response = await fetch(env.BACKEND + `/deleteLight`, requestOptions);
           const data = await response.json();
       
-          if (!response.ok) {
-            setErrorMessage(data.detail);
-          } else {
+          if(!response.ok || data.detail == "Invalid Email or Password")
+          {
+              console.log("Admin Session Expired.. Please try logging again!")
+              localStorage.setItem("User_Token", null);
+              setToken(null)
+              setErrorMessage("Admin Session Expired.. Please try logging again!")
+          }
+          else if(data.status_code === 401)
+            {
+                console.log(data.detail)
+                //setXyz(data.detail)
+            } 
+          else {
             setLights([])
           }
     }
@@ -295,22 +299,23 @@ function Admin({setLights, poleData}) {
           console.log(response)
           console.log(data)
       
-          if (!response.ok) {
-            setErrorMessage(data.detail);
-          } else {
+          if(!response.ok || data.detail == "Invalid Email or Password")
+          {
+              console.log("Admin Session Expired.. Please try logging again!")
+              localStorage.setItem("User_Token", null);
+              setToken(null)
+              setErrorMessage("Admin Session Expired.. Please try logging again!")
+          }
+          else if(data.status_code === 401)
+            {
+                console.log(data.detail)
+                //setXyz(data.detail)
+            } 
+          else {
             setLights([])
           }
     }
 
-    // const handleSubmissionDelete = () => {
-    //     if (!isFilePickedDelete) return;
-    //     const formData = new FormData();
-    //     formData.append("file", selectedFileDelete);
-    //     fetch(env.BACKEND + `/deleteLightsFile`, {
-    //         method:"POST",
-    //         body: formData
-    //       }).then(setLights([]));  
-    // };
     const handleSubmissionDelete = async() => {
         if(!isFilePickedDelete) return;
         const formData = new FormData();
@@ -325,9 +330,19 @@ function Admin({setLights, poleData}) {
           const response = await fetch(env.BACKEND + `/deleteLightsFile`, requestOptions);
           const data = await response.json();
       
-          if (!response.ok) {
-            setErrorMessage(data.detail);
-          } else {
+          if(!response.ok || data.detail == "Invalid Email or Password")
+          {
+              console.log("Admin Session Expired.. Please try logging again!")
+              localStorage.setItem("User_Token", null);
+              setToken(null)
+              setErrorMessage("Admin Session Expired.. Please try logging again!")
+          }
+          else if(data.status_code === 401)
+            {
+                console.log(data.detail)
+                //setXyz(data.detail)
+            } 
+          else {
             setLights([])
           }
     }
@@ -354,34 +369,29 @@ function Admin({setLights, poleData}) {
           const response = await fetch(env.BACKEND + `/resolveReport`, requestOptions);
           const data = await response.json();
       
-          if (!response.ok) {
-            setErrorMessage(data.detail);
-          } else {
+          if(!response.ok || data.detail == "Invalid Email or Password")
+            {
+                console.log("Admin Session Expired.. Please try logging again!")
+                localStorage.setItem("User_Token", null);
+                setToken(null)
+                setErrorMessage("Admin Session Expired.. Please try logging again!")
+            }
+          else if(data.status_code === 401)
+            {
+                
+                console.log(data.detail)
+                //setXyz(data.detail)
+            } 
+          else {
             setReports(data);
           }
     }
-    
-    // const handleResolveReports=(reports_to_resolve)=>{
-    //     console.log(encodeURIComponent(reports_to_resolve))
-    //     fetch(`${env.BACKEND}/resolveReport?id=${encodeURIComponent(reports_to_resolve)}&comment=${adminComment}`)
-    //     .then((response) => {
-    //         if(response.status == 200) {
-    //             response.json().then((data) => {
-    //                 setReports(data);
-    //             })
-    //         } else {
-    //             console.log("Unable to resolve");
-    //         }
-    //     })
-    // }
 
-
-    
     //Fetching reports
     React.useEffect(()=>{
-        if(showReports || options==1 || token)
+        if(options==1)
         {
-
+            console.log("showReports", options)
             const requestOptions = {
                     method: "GET",
                     headers: {
@@ -392,18 +402,33 @@ function Admin({setLights, poleData}) {
             const fetchReport = async () => {
                 const reportData = await fetch(`${env.BACKEND}/reports`, requestOptions)
                 const reportDataJson = await reportData.json()
-                setReports(reportDataJson)
+                if(!reportData.ok || reportDataJson.detail == "Invalid Email or Password")
+                    {
+                        console.log("Admin Session Expired.. Please try logging again!")
+                        localStorage.setItem("User_Token", null);
+                        setToken(null)
+                        setErrorMessage("Admin Session Expired.. Please try logging again!")
+                    }
+                else if(reportDataJson.status_code === 401)
+                {
+                    console.log(reportDataJson.detail)
+                    //setXyz(reportDataJson.detail)
+                }
+                else
+                {
+                    setReports(reportDataJson)
+                }
             }
-
-            fetchReport().catch(console.error);
+            fetchReport()
       }
 
-    }, [showReports, options, token])
+    }, [options])
 
      //Fetching Resolved reports
      React.useEffect(()=>{
-      if(showResolvedReports || options==2)
+      if(options==3)
       {
+        console.log("showResolvedReports", options)
         const requestOptions = {
             method: "GET",
             headers: {
@@ -414,13 +439,27 @@ function Admin({setLights, poleData}) {
         const fetchResolvedReport = async () => {
             const resolveReportData = await fetch(`${env.BACKEND}/getResolvedReport`, requestOptions)
             const resolveReportDataJson = await resolveReportData.json()
-            setResolvedReports(resolveReportDataJson)
+            if(!resolveReportData.ok || resolveReportDataJson.detail == "Invalid Email or Password")
+                {
+                    console.log("Admin Session Expired.. Please try logging again!")
+                    localStorage.setItem("User_Token", null);
+                    setToken(null)
+                    setErrorMessage("Admin Session Expired.. Please try logging again!")
+                }
+            else if(resolveReportDataJson.status_code === 401)
+            {
+                console.log(resolveReportDataJson.detail)
+                //setXyz(resolveReportDataJson.detail)
+            }
+            else
+            {
+                setResolvedReports(resolveReportDataJson)
+            }
         }
-
-        fetchResolvedReport().catch(console.error);
+        fetchResolvedReport()
     }
 
-    }, [showResolvedReports, options])
+    }, [options])
 
 
 
@@ -433,7 +472,7 @@ function Admin({setLights, poleData}) {
             <div>CCMS No.: ${position['CCMS NO']}</div>
             <div>Type of Light: ${position['Type of Light']}</div>
             <div>No. Of Lights: ${position['No. Of Lights']}</div>
-            <div>Wattage: ${parseInt(position['Wattage'])}</div>
+            <div>Wattage: ${position['Wattage']}</div>
             <div>Connected Load: ${position['Connected Load']!=-1?position['Connected Load']:0}</div>
             <div>Actual Load: ${position['Actual Load']!=-1?position['Actual Load']:0}</div>
             <div>Unique Pole No.: ${position['Unique Pole No.']}</div>
@@ -686,11 +725,11 @@ function Admin({setLights, poleData}) {
         <div className='App-body' id='Admin-App-Body'>
         <div className="InputAdmin">
             <div className="LayersAdmin">
-            <Button className="button is-primary adminButton" onClick={() => {setOptions(1); setShowReports(true);}} >Show Reports</Button>
+            <Button className="button is-primary adminButton" onClick={() => {setOptions(1);}} >Show Reports</Button>
             <Button className="button is-primary adminButton" onClick={() => setOptions(2)}>Show Reports on Map</Button>
-            <Button className="button is-primary adminButton" onClick={() => {setOptions(3); setShowResolvedReports(true);}}>Show Resolved Reports</Button>
-            <Button className="button is-primary adminButton" onClick={() => setOptions(4)}>Add Streetlight</Button>
-            <Button className="button is-primary adminButton" onClick={() => setOptions(5)}>Delete StreetLight</Button>
+            <Button className="button is-primary adminButton" onClick={() => {setOptions(3); }}>Show Resolved Reports</Button>
+            <Button className="button is-primary adminButton" onClick={() => {setOptions(4);}}>Add Streetlight</Button>
+            <Button className="button is-primary adminButton" onClick={() => {setOptions(5);}}>Delete StreetLight</Button>
             <Button className="button is-primary adminButton" onClick={(e)=>{handleRegisterUser(e); setOptions(6);}} >Register New Admin</Button>
             
             <Button className="button is-primary adminButton" onClick={handleLogOut}>

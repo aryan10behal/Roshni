@@ -34,9 +34,14 @@ function Register({registered, setRegistered}){
     const response = await fetch(env.BACKEND +"/api/users", requestOptions);
     const data = await response.json();
 
-    if (!response.ok) {
-      setErrorMessage(data.detail);
-    } else {
+    if(!response.ok || data.detail == "Invalid Email or Password")
+      {
+          console.log("Admin Session Expired.. Please try logging again!")
+          localStorage.setItem("User_Token", null);
+          //setToken(null) -- commenting this. Was giving error while building.
+          setErrorMessage("Admin Session Expired.. Please try logging again!")
+      }
+      else {
       // setToken(data.access_token);
       setRegistered("New Admin Registered!! ")
       setErrorMessage("New Admin Registered!! ")

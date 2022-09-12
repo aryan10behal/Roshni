@@ -217,7 +217,7 @@ function SelectedLight({light, reports, reportFlag, setReportFlag, setReports}) 
             <div>CCMS No.: {light['CCMS NO']}</div>
             <div>Type of Light: {light['Type of Light']}</div>
             <div>No. Of Lights: {light['No. Of Lights']}</div>
-            <div>Wattage: {parseInt(light['Wattage'])}</div>
+            <div>Wattage: {light['Wattage']}</div>
             <div>Connected Load: {light['Connected Load']!=-1?light['Connected Load']:0}</div>
             <div>Actual Load: {light['Actual Load']!=-1?light['Actual Load']:0}</div>
             <div>Unique Pole No.: {light['Unique Pole No.']}</div>

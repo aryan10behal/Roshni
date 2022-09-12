@@ -18,7 +18,8 @@ export const UserProvider = (props) => {
       const response = await fetch(env.BACKEND +"/api/users/me", requestOptions);
       
       if (!response.ok) {
-        setToken(null);
+          console.log(token, "##user context ka bhi response dekh lo: ", response.json())
+          if(token){console.log("ki bane duniya da");setToken(null);}
       }
       localStorage.setItem("User_Token", token);
     };

@@ -59,6 +59,7 @@ async def authenticate_user(email: str, password: str, db: _orm.Session):
 async def create_token(user: _models.User):
     unique_token = [token["unique_token"] for token in database['unique-token'].find() if token["unique_token"]][0]
     user_obj = _schemas.User.from_orm(user)
+
     print("\n\nunique token value#: ",unique_token)
 
     user_obj = user_obj.dict()

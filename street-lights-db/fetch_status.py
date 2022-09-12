@@ -43,7 +43,7 @@ while True:
             unique_token.drop()
             unique_token.insert_one({"unique_token":str(uuid.uuid1())})
         toggle ^= 1
-        print('updated')
+        print('updated', toggle)
     except Exception as exception:
         print(exception)
     finally:

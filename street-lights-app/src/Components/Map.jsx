@@ -96,11 +96,9 @@ function Map({
     
     if (heatmap.current) heatmap.current.setMap(null);
     if (!heatmapData) return;
-    console.log(heatmapData[0]["LatLng"])
     var heatMapNewData = heatmapData.map(
       (position) => position["LatLng"]
     );
-    console.log(heatMapNewData[0])
     heatmap.current = new window.google.maps.visualization.HeatmapLayer({
       map,
       data: heatMapNewData,

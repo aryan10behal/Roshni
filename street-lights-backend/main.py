@@ -322,7 +322,7 @@ async def generate_token(
 
     token = await _services.create_token(user)
 
-    if form_data.client_secret[0:4] != "null":
+    if form_data.client_secret and form_data.client_secret[0:4] != "null":
             return dict(status_code=401, detail="Another Admin already Logged in another tab!! Please use that user")
 
     street_light_db = mongodb["street-lights-db"]
@@ -340,7 +340,7 @@ async def logout(user: _schemas.User = Depends(_services.get_current_user)):
     street_light_db['LoggedIn-Users'].delete_many({'timestamp':{'$lte': datetime.now(IST) - timedelta(minutes=30)}})
     logged_in_user_list = [{'email': logged_in_user['email'],'token':logged_in_user['token'], 'timestamp': logged_in_user['timestamp'], 'FCMRegistrationToken': logged_in_user['FCMRegistrationToken']} for logged_in_user in street_light_db['LoggedIn-Users'].find()]
     print("Currently Logged In users are: ", logged_in_user_list)
-    return {'access_token': None, 'detail':'Logged Out User'}
+    return {'access_token': None, 'detail':'User Logged Out..'}
 
 
 @app.get("/api/users/me", response_model=_schemas.User)
@@ -397,6 +397,7 @@ async def get_total_pages(req: Request):
 async def get_streetlights(req: Request):
 
     all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['_id'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['_id'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['_id'], 'agency': streetlight['_id'][0:2], 'unique_no': streetlight['_id'][7:]} for streetlight in db["streetlights"].find() if streetlight['_id']]
+    print(len(all_lights))
     request_args = dict(req.query_params)
 
     if 'live' in request_args:
@@ -497,11 +498,8 @@ def get_route(req: Request):
                 if route_duplicate[i-1] != route_duplicate[i]:
                     route.append(route_duplicate[i])
             
-            
-
             if len(route) == 1:
                 route.append(route[0])
-
 
             total_distance = 0
             path[(route[0]['lat'], route[0]['lng'])] = total_distance 
@@ -556,7 +554,8 @@ def get_route(req: Request):
 
             all_routes[f'route_{route_num}'] = output
         all_routes['best_route_index'] = best_route_index
-    except:
+    except Exception as e:
+        print("Route error", e)
         raise HTTPException(status_code=401, detail=" Oops!! Some error occurred..")
 
     return all_routes
@@ -763,7 +762,6 @@ async def report(req: Request):
     except Exception as e:
         print(e)
         raise HTTPException(status_code=401, detail="Error in Reporting Light")
-
 
     return get_all_reported_light()
 
