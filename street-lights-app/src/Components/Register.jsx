@@ -1,6 +1,6 @@
 import React, { useContext, useState } from "react";
 import env from "react-dotenv";
-import { UserContext } from "../context/UserContext";
+//import { UserContext } from "../context/UserContext";
 import ErrorMessage from "./ErrorMessage";
 import { FormControlLabel,  TextField, Typography, Radio, RadioGroup, Input, Button } from "@mui/material";
 
@@ -16,12 +16,12 @@ import Container from '@mui/material/Container';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 const theme = createTheme();
 
-function Register({registered, setRegistered}){
+function Register({registered, setRegistered, token, setToken, setAdminErrorMessage}){
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmationPassword, setConfirmationPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [token,] = useContext(UserContext);
+
 
   const submitRegistration = async () => {
     const requestOptions = {
@@ -33,13 +33,16 @@ function Register({registered, setRegistered}){
 
     const response = await fetch(env.BACKEND +"/api/users", requestOptions);
     const data = await response.json();
-
-    if(!response.ok || data.detail == "Invalid Email or Password")
+    if(data.detail == "Email already in use")
+    {
+      setErrorMessage("Email already registered. Try some other email!!")
+    }
+    else if(!response.ok || data.detail == "Invalid Email or Password")
       {
           console.log("Admin Session Expired.. Please try logging again!")
           localStorage.setItem("User_Token", null);
-          //setToken(null) -- commenting this. Was giving error while building.
-          setErrorMessage("Admin Session Expired.. Please try logging again!")
+          setToken(null)
+          setAdminErrorMessage("Admin Session Expired.. Please try logging again!")
       }
       else {
       // setToken(data.access_token);

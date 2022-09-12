@@ -1,4 +1,4 @@
-import React, { useEffect, useState,useContext  } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppBar, Button, CircularProgress, Toolbar, Typography } from '@mui/material';
 import Home from './Components/Home';
 import './App.scss'
@@ -117,10 +117,12 @@ function App() {
             setLoading(false);
           })
           .catch((errors) => {
-            errors.forEach((error) => {
-                console.error(error)
-                setLoading(false);
-            });
+            // errors.forEach((error) => {
+            //     console.error(error)
+            //     setLoading(false);
+            // });
+            console.error(errors)
+            setLoading(false)
           });
     }
 

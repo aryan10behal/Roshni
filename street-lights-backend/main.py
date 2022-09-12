@@ -301,6 +301,7 @@ IST = pytz.timezone('Asia/Kolkata')
 
 @app.post("/api/users")
 async def create_user(new_user: _schemas.UserCreate, db: _orm.Session = Depends(_services.get_db), user: _schemas.User = Depends(_services.get_current_user)):
+    authenticate_user(user.email)
     db_user = await _services.get_user_by_email(new_user.email, db)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already in use")
@@ -381,7 +382,7 @@ async def get_total_pages(req: Request):
                          
     request_args = dict(req.query_params)
 
-    page_size = len(all_lights)//5 + 1
+    page_size = 15000
     if 'live' in request_args and request_args['live']:
         total_lights = len([light for light in all_lights if light['Unique Pole No.'] != ''])
         if total_lights%page_size == 0:
@@ -396,6 +397,7 @@ async def get_total_pages(req: Request):
 @app.get("/streetlights")
 async def get_streetlights(req: Request):
 
+    start = timer()
     all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['_id'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['_id'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['_id'], 'agency': streetlight['_id'][0:2], 'unique_no': streetlight['_id'][7:]} for streetlight in db["streetlights"].find() if streetlight['_id']]
     print(len(all_lights))
     request_args = dict(req.query_params)
@@ -408,7 +410,7 @@ async def get_streetlights(req: Request):
     end_index = len(all_lights)
     if 'page_no' in request_args:
         page_no = int(request_args['page_no'])
-        page_size = len(all_lights)//5 +1
+        page_size = 15000
         if 'page_size' in request_args:
             page_size = int(request_args['page_size'])
         begin_index = page_no * page_size
@@ -416,7 +418,6 @@ async def get_streetlights(req: Request):
         print('page_no', begin_index, end_index, 'page_size', page_size)
 
     ccms_arr={ccms_d['ccms_no']: {'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']} 
-    start = timer()
     for light in all_lights[begin_index: end_index]:
         if light['CCMS_no'] in ccms_arr.keys():
             light['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']

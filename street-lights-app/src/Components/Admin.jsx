@@ -11,7 +11,6 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import { Wrapper } from "@googlemaps/react-wrapper";
 import Map from "./Map";
-import { UserContext } from "../context/UserContext";
 import ErrorMessage from "./ErrorMessage";
 import Register from "./Register";
 
@@ -33,7 +32,7 @@ function Admin({setLights, poleData}) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
-    const [token, setToken] = useContext(UserContext);
+    const [token, setToken] = useState(localStorage.getItem("User_Token"));
 
     const [registerUser, setRegisterUser] = useState(null);
     const [registered, setRegistered] = useState(null);
@@ -55,9 +54,9 @@ function Admin({setLights, poleData}) {
     const [adminComment, setAdminComment] = useState(null);
 
     const [selectionModel, setSelectionModel] = React.useState([]);
+    const [poleInfo, setPoleInfo]= useState([]);
 
     const [options, setOptions] = useState(0);
-    const [poleInfo, setPoleInfo]= useState([]);
     //1: Show reports
     //2: Show reports on map
     //3: Show Resolved reports
@@ -83,9 +82,11 @@ function Admin({setLights, poleData}) {
 
     // Login Admin
     const submitLogin = async () => {
+        setErrorMessage("");
         if(!email || !password)
         {
             console.log("Email/Password missing")
+            setErrorMessage("Email/Password missing");
             return;
         }
         console.log(localStorage.getItem("User_Token"))
@@ -122,13 +123,37 @@ function Admin({setLights, poleData}) {
     };
 
     React.useEffect(()=>{
+        const fetchUser = async () => {
+            const requestOptions = {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + token,
+              },
+            };
+      
+            const response = await fetch(env.BACKEND +"/api/users/me", requestOptions);
+            
+            if (!response.ok) {
+                console.log(token, "##user context ka bhi response dekh lo: ", response.json())
+                if(token){console.log("ki bane duniya da");setToken(null);}
+            }
+            else 
+                {
+                    if(options == 0)
+                        {
+                            setOptions(1)
+                        }
+                }
+            localStorage.setItem("User_Token", token);
+          };
+        fetchUser();
         if(!token)
         {
             console.log("!token chal gyaa!!")
             setEmail("");
             setOptions(0);
             setPassword("");
-            setErrorMessage("");
             setRegisterUser(null);
             setRegistered(null);
             setSelectedFileAdd();
@@ -655,7 +680,7 @@ function Admin({setLights, poleData}) {
 
     return (
         <div>
-        {!token? 
+        {!token || token === 'null'? 
         (
          <div className="LoginCard">
              <ThemeProvider theme={theme}>
@@ -741,7 +766,7 @@ function Admin({setLights, poleData}) {
         {token && options==6?(
              <div className="AdminRightWrapper">
                  {console.log(token)}
-             <Register registered = {registered} setRegistered={setRegistered}/>
+             <Register registered = {registered} setRegistered={setRegistered} token={token} setToken = {setToken} setAdminErrorMessage = {setErrorMessage}/>
              {/* <br />
              <Button className="button is-primary" onClick={handleDoneRegisteration}>Back</Button> */}
             
