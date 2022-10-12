@@ -398,16 +398,15 @@ async def get_total_pages(req: Request):
 async def get_streetlights(req: Request):
 
     start = timer()
-    all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['_id'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['_id'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['_id'], 'agency': streetlight['_id'][0:2], 'unique_no': streetlight['_id'][7:]} for streetlight in db["streetlights"].find() if streetlight['_id']]
-    print(len(all_lights))
     request_args = dict(req.query_params)
 
+    print("get streetlights args: ", request_args)
     if 'live' in request_args:
         only_live = int(request_args['live'])
     else:
         only_live = False
     begin_index = 0
-    end_index = len(all_lights)
+    end_index = 0
     if 'page_no' in request_args:
         page_no = int(request_args['page_no'])
         page_size = 15000
@@ -416,16 +415,17 @@ async def get_streetlights(req: Request):
         begin_index = page_no * page_size
         end_index = (page_no + 1) * page_size
         print('page_no', begin_index, end_index, 'page_size', page_size)
-
+    all_lights = [{'lng': streetlight['lng'], 'lat': streetlight['lat'], 'CCMS_no':streetlight['CCMS_no'], 'zone':streetlight['_id'][2:4], 'Type of Light':streetlight['Type of Light'], 'No. Of Lights':streetlight['No. Of Lights'], 'Ward No.': streetlight['_id'][4:7] , 'Wattage':streetlight['wattage'], 'Connected Load':streetlight['Connected Load'], 'Actual Load':streetlight['Actual Load'], 'Unique Pole No.':streetlight['_id'], 'agency': streetlight['_id'][0:2], 'unique_no': streetlight['_id'][7:]} for streetlight in db["streetlights"].find() if streetlight['_id']]
+    response = []
     ccms_arr={ccms_d['ccms_no']: {'s_no': ccms_d['s_no'], 'ccms_no': ccms_d['ccms_no'], 'actual_load': ccms_d['actual_load'], 'ZONE': ccms_d['ZONE'], 'vendor_name': ccms_d['vendor_name'], 'connected_load': ccms_d['connected_load'], 'address': ccms_d['address']} for ccms_d in db["ccms"].find() if ccms_d['ccms_no']} 
     for light in all_lights[begin_index: end_index]:
         if light['CCMS_no'] in ccms_arr.keys():
             light['Connected Load'] = ccms_arr[light['CCMS_no']]['connected_load']
             light['Actual Load'] = ccms_arr[light['CCMS_no']]['actual_load']
+        if not only_live or light['Unique Pole No.'] != '':
+            response.append(light)
                           
     end = timer()
-    response = [light for light in all_lights if not only_live or light['Unique Pole No.'] != '']
-    response = response[begin_index: end_index]
     print(begin_index, end_index, "loading time", end-start, ' | response size:', len(response))
     return response
 

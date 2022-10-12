@@ -211,6 +211,7 @@ function Admin({setLights, poleData}) {
         setRegistered(null)
     }
 
+        //add single light
      const addLight = async() => {
       
         if(!addSingleLightData) return;
@@ -253,6 +254,7 @@ function Admin({setLights, poleData}) {
           }
     };
 
+    //delete single light
     const deleteLight = async() => {
        
         if(!deleteSingleLightData) return;
@@ -308,6 +310,7 @@ function Admin({setLights, poleData}) {
         
     };
 
+    // add lights using a csv file
     const handleSubmissionAdd = async() => {
         if (!isFilePickedAdd) return;
         const formData = new FormData();
@@ -341,6 +344,8 @@ function Admin({setLights, poleData}) {
           }
     }
 
+
+    //delete lights using csv
     const handleSubmissionDelete = async() => {
         if(!isFilePickedDelete) return;
         const formData = new FormData();
@@ -380,6 +385,7 @@ function Admin({setLights, poleData}) {
         handleClickOpen();
     }
 
+    // resolve reported lights
     const handleResolveReports = async(reports_to_resolve) => {
         const requestOptions = {
             method: "POST",
